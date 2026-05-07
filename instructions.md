@@ -112,6 +112,63 @@ Alternatively, you can test locally using:
 
 ```bash
 agents-cli playground
+## 6. Deploying the Wiki Web UI to Cloud Run
+
+The UI is located in the `frontend` directory and is built as a Next.js application.
+
+### Prerequisites for UI Deployment
+
+1.  **Artifact Registry**: You need a repository to store the Docker image.
+2.  **Cloud Run**: Enabled in your project.
+
+### Step-by-Step Deployment
+
+1.  **Create Artifact Registry Repository** (if you don't have one):
+
+```bash
+gcloud artifacts repositories create agentwiki-repo \
+    --repository-format=docker \
+    --location=us-central1 \
+    --description="Docker repository for AgentWiki"
 ```
-- **`agents-cli playground`**: This command launches a local development environment with a chat interface to interact with your agent. It is important for testing and iterating on your agent's behavior.
+
+2.  **Build and Push the Docker Image**:
+
+Navigate to the `frontend` directory:
+```bash
+cd frontend
+```
+
+Build the image using Cloud Build (recommended for simplicity):
+```bash
+gcloud builds submit --tag us-central1-docker.pkg.dev/[YOUR_PROJECT_ID]/agentwiki-repo/wiki-ui:latest .
+```
+Replace `[YOUR_PROJECT_ID]` with your actual GCP project ID.
+
+3.  **Deploy to Cloud Run**:
+
+```bash
+gcloud run deploy wiki-ui \
+    --image us-central1-docker.pkg.dev/[YOUR_PROJECT_ID]/agentwiki-repo/wiki-ui:latest \
+    --platform managed \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --set-env-vars WIKI_BUCKET_NAME=[YOUR_WIKI_BUCKET_NAME]
+```
+Replace `[YOUR_PROJECT_ID]` and `[YOUR_WIKI_BUCKET_NAME]` with your specific values.
+
+### IAM Permissions for Cloud Run
+
+The Cloud Run service needs permission to read from the GCS wiki bucket.
+
+1.  Find the service account used by the Cloud Run service. By default, it uses the default compute service account or a specific one if you configured it.
+2.  Grant it **Storage Object Viewer** (`roles/storage.objectViewer`) on the wiki bucket:
+
+```bash
+gcloud storage buckets add-iam-policy-binding gs://[YOUR_WIKI_BUCKET_NAME] \
+    --member="serviceAccount:[CLOUD_RUN_SERVICE_ACCOUNT_EMAIL]" \
+    --role="roles/storage.objectViewer"
+```
+
+This ensures the UI can read the markdown files and generate the graph.
 

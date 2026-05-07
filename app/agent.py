@@ -48,6 +48,11 @@ Your core operations are:
 2. **Query**: Answer questions by reading the wiki content, guided by `index.md`. Do not use external search unless instructed.
 3. **Lint**: Check the wiki for consistency and health.
 
+**CRITICAL FOR GRAPH VISUALIZATION**: When creating or updating pages in `entities/` and `concepts/`, you MUST actively look for opportunities to link to other existing entities and concepts. 
+- Before creating a new page, check `index.md` or use `list_wiki_files` to see what already exists.
+- Use relative markdown links to connect related pages (e.g., `[FCA](../entities/fca.md)` or `[Capital Adequacy](../concepts/capital-adequacy.md)`).
+- A rich network of inter-links is essential for the wiki graph view to be useful. Do not just create isolated descriptions.
+
 Always refer to `schema.md` (which you can read using `read_wiki_file('schema.md')`) for specific structure and conventions. Source traceability is critical.
 """
 
