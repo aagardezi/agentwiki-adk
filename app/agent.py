@@ -32,9 +32,17 @@ from app.tools.extractor import extract_from_url, extract_from_file
 
 WIKI_BUCKET_NAME = os.environ.get("WIKI_BUCKET_NAME", "agentwiki-adk-wiki-sg")
 
+def get_current_date_time() -> str:
+    """Returns the current date and time in ISO format.
+    Use this tool to get the correct date and time for logging and frontmatter.
+    """
+    return datetime.datetime.now().isoformat()
+
 instruction = f"""You are the LLM Wiki Agent. Your goal is to build and maintain a persistent knowledge base (wiki) in GCS, following the rules defined in `schema.md`.
 
 You have access to tools to read and write files in the wiki bucket (`{WIKI_BUCKET_NAME}`) and to extract content from URLs and files.
+You also have a tool to get the current date and time, which you MUST use for logging and setting timestamps in file frontmatter.
+
 Your core operations are:
 1. **Ingest**: When given a URL or file path, extract the content, summarize it, and integrate it into the wiki (updating index, entities, concepts, and log).
 2. **Query**: Answer questions by reading the wiki content, guided by `index.md`. Do not use external search unless instructed.
@@ -57,6 +65,7 @@ root_agent = Agent(
         wiki_file_exists,
         extract_from_url,
         extract_from_file,
+        get_current_date_time,
     ],
 )
 
