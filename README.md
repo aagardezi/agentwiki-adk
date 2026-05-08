@@ -49,7 +49,7 @@ graph TD
     Ext -->|Fetch| Web[External URL]
     Ext -->|Read| File[Local File]
     
-    subgraph GCS Bucket
+    subgraph gcs_bucket ["GCS Bucket"]
         schema[schema.md]
         index[index.md]
         log[log.md]
@@ -61,12 +61,12 @@ graph TD
     Agent -.->|Navigates via| index
     Agent -.->|Logs Actions to| log
     
-    subgraph Knowledge Graph Features
+    subgraph kg_features ["Knowledge Graph Features"]
         Tags[Tags]
         Rels[Explicit Relationships]
     end
     
-    UI -.->|Visualizes| Knowledge Graph Features
+    UI -.->|Visualizes| kg_features
 ```
 
 
