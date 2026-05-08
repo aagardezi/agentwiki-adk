@@ -69,7 +69,7 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
                     
                     // Handle lists like [a, b]
                     if (value.startsWith('[') && value.endsWith(']')) {
-                        value = value.slice(1, -1).split(',').map(s => s.trim().replace(/['"]/g, ''));
+                        value = value.slice(1, -1).split(',').map((s: string) => s.trim().replace(/['"]/g, ''));
                     }
                     
                     metadata[currentKey] = value;

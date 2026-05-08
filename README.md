@@ -25,6 +25,8 @@ The system consists of four main layers:
     -   **Interactive Graph View**: Visualizes links, explicit relationships, and tag clusters.
     -   **Perspective Rendering**: Filters graph to show only selected node and its neighbors.
 
+![Wiki Web UI](frontend_screenshot.png)
+
 
 
 ### Agent Design
@@ -118,4 +120,4 @@ agents-cli playground
 
 ## Deployment
 
-For detailed deployment instructions, including required APIs and IAM permissions, see [instructions.md](file:///Users/sgardezi/work/projects/agentwiki-adk/instructions.md).
+For detailed deployment instructions, including required APIs, IAM permissions, and how to set up direct Identity-Aware Proxy (IAP) for secure access, see [instructions.md](file:///Users/sgardezi/work/projects/agentwiki-adk/instructions.md).

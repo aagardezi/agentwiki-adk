@@ -167,64 +167,88 @@ You can run the frontend locally to test the UI and the graph visualization.
 > If port 3000 is already in use, Next.js might fail to start or try to use another port. You can specify a port using `npm run dev -- -p [PORT_NUMBER]`.
 
 
-## 7. Deploying the Wiki Web UI to Cloud Run
+## 7. Deploying the Wiki Web UI to Cloud Run with IAP
 
-The UI is located in the `frontend` directory and is built as a Next.js application.
+The UI is located in the `frontend` directory and is built as a Next.js application. These instructions cover deploying it with direct Identity-Aware Proxy (IAP) integration.
 
 ### Prerequisites for UI Deployment
 
 1.  **Artifact Registry**: You need a repository to store the Docker image.
 2.  **Cloud Run**: Enabled in your project.
+3.  **IAP**: Enabled in your project.
 
 ### Step-by-Step Deployment
 
-1.  **Create Artifact Registry Repository** (if you don't have one):
+1.  **Enable Required APIs**:
+    ```bash
+    gcloud services enable iap.googleapis.com run.googleapis.com
+    ```
 
-```bash
-gcloud artifacts repositories create agentwiki-repo \
-    --repository-format=docker \
-    --location=us-central1 \
-    --description="Docker repository for AgentWiki"
-```
+2.  **Create Artifact Registry Repository** (if you don't have one):
+    ```bash
+    gcloud artifacts repositories create agentwiki-repo \
+        --repository-format=docker \
+        --location=us-central1 \
+        --description="Docker repository for AgentWiki"
+    ```
 
-2.  **Build and Push the Docker Image**:
+3.  **Build and Push the Docker Image**:
+    Navigate to the `frontend` directory:
+    ```bash
+    cd frontend
+    ```
+    Build the image using Cloud Build:
+    ```bash
+    gcloud builds submit --tag us-central1-docker.pkg.dev/[YOUR_PROJECT_ID]/agentwiki-repo/wiki-ui:latest .
+    ```
+    Replace `[YOUR_PROJECT_ID]` with your actual GCP project ID.
 
-Navigate to the `frontend` directory:
-```bash
-cd frontend
-```
+4.  **Deploy to Cloud Run with IAP**:
+    ```bash
+    gcloud run deploy wiki-ui \
+        --image us-central1-docker.pkg.dev/[YOUR_PROJECT_ID]/agentwiki-repo/wiki-ui:latest \
+        --platform managed \
+        --region us-central1 \
+        --no-allow-unauthenticated \
+        --iap \
+        --set-env-vars WIKI_BUCKET_NAME=[YOUR_WIKI_BUCKET_NAME]
+    ```
+    Replace `[YOUR_PROJECT_ID]` and `[YOUR_WIKI_BUCKET_NAME]` with your specific values.
+    *   `--no-allow-unauthenticated`: Restricts public access.
+    *   `--iap`: Enables direct IAP integration.
 
-Build the image using Cloud Build (recommended for simplicity):
-```bash
-gcloud builds submit --tag us-central1-docker.pkg.dev/[YOUR_PROJECT_ID]/agentwiki-repo/wiki-ui:latest .
-```
-Replace `[YOUR_PROJECT_ID]` with your actual GCP project ID.
+5.  **Grant Invoker Permission to IAP Service Agent**:
+    IAP needs permission to invoke the Cloud Run service.
+    ```bash
+    gcloud run services add-iam-policy-binding wiki-ui \
+        --region=us-central1 \
+        --member=serviceAccount:service-[YOUR_PROJECT_NUMBER]@gcp-sa-iap.iam.gserviceaccount.com \
+        --role=roles/run.invoker
+    ```
+    Replace `[YOUR_PROJECT_NUMBER]` with your actual GCP project number.
 
-3.  **Deploy to Cloud Run**:
+6.  **Grant Access to Users**:
+    Grant the "IAP-secured Web App User" role to the users who should have access.
+    ```bash
+    gcloud iap web add-iam-policy-binding \
+        --member=user:[USER_EMAIL] \
+        --role=roles/iap.httpsResourceAccessor \
+        --region=us-central1 \
+        --resource-type=cloud-run \
+        --service=wiki-ui
+    ```
+    Replace `[USER_EMAIL]` with the email of the user (e.g., `user@example.com`).
 
-```bash
-gcloud run deploy wiki-ui \
-    --image us-central1-docker.pkg.dev/[YOUR_PROJECT_ID]/agentwiki-repo/wiki-ui:latest \
-    --platform managed \
-    --region us-central1 \
-    --allow-unauthenticated \
-    --set-env-vars WIKI_BUCKET_NAME=[YOUR_WIKI_BUCKET_NAME]
-```
-Replace `[YOUR_PROJECT_ID]` and `[YOUR_WIKI_BUCKET_NAME]` with your specific values.
-
-### IAM Permissions for Cloud Run
+### IAM Permissions for Cloud Run to access GCS
 
 The Cloud Run service needs permission to read from the GCS wiki bucket.
 
-1.  Find the service account used by the Cloud Run service. By default, it uses the default compute service account or a specific one if you configured it.
-2.  Grant it **Storage Object Viewer** (`roles/storage.objectViewer`) on the wiki bucket:
-
-```bash
-gcloud storage buckets add-iam-policy-binding gs://[YOUR_WIKI_BUCKET_NAME] \
-    --member="serviceAccount:[CLOUD_RUN_SERVICE_ACCOUNT_EMAIL]" \
-    --role="roles/storage.objectViewer"
-```
-
-This ensures the UI can read the markdown files and generate the graph.
+1.  Grant the Cloud Run service account **Storage Object Viewer** (`roles/storage.objectViewer`) on the wiki bucket. By default, Cloud Run uses the default compute service account:
+    ```bash
+    gcloud storage buckets add-iam-policy-binding gs://[YOUR_WIKI_BUCKET_NAME] \
+        --member="serviceAccount:[YOUR_PROJECT_NUMBER]-compute@developer.gserviceaccount.com" \
+        --role="roles/storage.objectViewer"
+    ```
+    Replace `[YOUR_PROJECT_NUMBER]` and `[YOUR_WIKI_BUCKET_NAME]` with your specific values.
 
 

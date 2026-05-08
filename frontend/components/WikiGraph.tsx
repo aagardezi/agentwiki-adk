@@ -17,7 +17,7 @@ export default function WikiGraph({ onNodeClick, focusedNodeId }: { onNodeClick:
   const [loading, setLoading] = useState(true);
   const [isFiltered, setIsFiltered] = useState(false);
   const [hasCentered, setHasCentered] = useState(false);
-  const fgRef = useRef<any>();
+  const fgRef = useRef<any>(null);
 
 
   useEffect(() => {
