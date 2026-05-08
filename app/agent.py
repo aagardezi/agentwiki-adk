@@ -15,12 +15,17 @@
 
 import datetime
 import os
+from dataclasses import dataclass
 from zoneinfo import ZoneInfo
 
+import google.auth
+from google import genai
 from google.adk.agents import Agent
 from google.adk.apps import App
-from google.adk.models import Gemini
+from google.adk.models import Gemini, google_llm
 from google.genai import types
+
+
 
 from app.tools.gcs_io import (
     read_wiki_file,
@@ -32,7 +37,38 @@ from app.tools.extractor import extract_from_url, extract_from_file
 
 WIKI_BUCKET_NAME = os.environ.get("WIKI_BUCKET_NAME", "agentwiki-adk-wiki-sg")
 
+
+@dataclass
+class ResearchConfiguration:
+    gemini_flash_model: str = "gemini-2.5-flash"
+    gemini_pro_model: str = "gemini-2.5-pro"
+    gemini_model: str = "gemini-3-flash-preview"
+    gemini31_model: str = "gemini-3.1-pro-preview"
+    gemini_3_pro_model: str = "gemini-3-pro-preview"
+
+
+config = ResearchConfiguration()
+
+
+def get_project_id():
+    _, project_id = google.auth.default()
+    return project_id
+
+
+api_client = genai.Client(
+    vertexai=True, project=get_project_id(), location="global"
+)
+
+model = google_llm.Gemini(
+    model=config.gemini_model,
+    retry_options=types.HttpRetryOptions(attempts=3),
+)
+
+model.api_client = api_client
+
+
 def get_current_date_time() -> str:
+
     """Returns the current date and time in ISO format.
     Use this tool to get the correct date and time for logging and frontmatter.
     """
@@ -76,12 +112,10 @@ Always refer to `schema.md` (which you can read using `read_wiki_file('schema.md
 
 root_agent = Agent(
     name="wiki_agent",
-    model=Gemini(
-        model="gemini-3-flash-preview",
-        retry_options=types.HttpRetryOptions(attempts=3),
-    ),
+    model=model,
     instruction=instruction,
     tools=[
+
 
         read_wiki_file,
         write_wiki_file,

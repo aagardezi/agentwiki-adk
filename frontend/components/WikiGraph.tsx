@@ -24,17 +24,22 @@ export default function WikiGraph({ onNodeClick, focusedNodeId }: { onNodeClick:
     fetch('/api/wiki/graph')
       .then(res => res.json())
       .then(data => {
-        setGraphData(data);
-        setFilteredData(data);
+        if (data.nodes && data.links) {
+            setGraphData(data);
+            setFilteredData(data);
+            
+            // Zoom to fit after data is loaded and state is updated
+            setTimeout(() => {
+                if (fgRef.current) {
+                    fgRef.current.zoomToFit(400, 50);
+                }
+            }, 500);
+        } else {
+            console.error('Invalid graph data received:', data);
+        }
         setLoading(false);
-        
-        // Zoom to fit after data is loaded and state is updated
-        setTimeout(() => {
-            if (fgRef.current) {
-                fgRef.current.zoomToFit(400, 50);
-            }
-        }, 500);
       })
+
       .catch(err => {
         console.error('Failed to load graph data:', err);
         setLoading(false);
@@ -43,10 +48,11 @@ export default function WikiGraph({ onNodeClick, focusedNodeId }: { onNodeClick:
 
 
   useEffect(() => {
-    if (focusedNodeId && focusedNodeId !== 'index.md' && graphData.nodes.length > 0) {
+    if (focusedNodeId && focusedNodeId !== 'index.md' && graphData.nodes?.length > 0) {
         // Find neighbors
         const neighbors = new Set<string>();
         neighbors.add(focusedNodeId);
+
         
         graphData.links.forEach(link => {
             const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
@@ -75,7 +81,7 @@ export default function WikiGraph({ onNodeClick, focusedNodeId }: { onNodeClick:
             fgRef.current.centerAt(node.x, node.y, 1000);
             fgRef.current.zoom(2, 1000);
         }
-    } else if (focusedNodeId === 'index.md' && graphData.nodes.length > 0) {
+    } else if (focusedNodeId === 'index.md' && graphData.nodes?.length > 0) {
         // Reset to full graph when index is selected
         setFilteredData(graphData);
         setIsFiltered(false);
@@ -84,6 +90,7 @@ export default function WikiGraph({ onNodeClick, focusedNodeId }: { onNodeClick:
             fgRef.current.zoom(1, 1000);
         }
     }
+
   }, [focusedNodeId, graphData, hasCentered]);
 
 

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beyond RAG: The LLM Wiki Pattern</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #fcfcfc;
+        }
+        h1 { 
+            font-size: 2.5rem;
+            color: #111;
+            border-bottom: 2px solid #eaeaea;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        h2 { 
+            font-size: 1.75rem;
+            color: #222;
+            border-bottom: 1px solid #eaeaea;
+            padding-bottom: 8px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+        h3 { 
+            font-size: 1.25rem;
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        p {
+            margin-bottom: 20px;
+        }
+        code { 
+            background-color: #f3f4f6;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 0.9em;
+        }
+        pre { 
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 25px;
+        }
+        pre code { 
+            background-color: transparent;
+            padding: 0;
+            font-size: 0.85em;
+        }
+        img { 
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin: 20px 0;
+        }
+        ul, ol {
+            margin-bottom: 20px;
+            padding-left: 25px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        blockquote {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 15px;
+            color: #4b5563;
+            font-style: italic;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+<h1>Beyond RAG: The LLM Wiki Pattern for Compounding Agent Memory</h1>
+<h2>The Problem with Traditional RAG</h2>
+<p>Retrieval-Augmented Generation (RAG) has been the go-to pattern for grounding Large Language Models (LLMs) in specific data. While effective, traditional RAG has a fundamental limitation: <strong>it is passive and stateless.</strong></p>
+<p>When a query comes in, the system searches a vector database for relevant chunks, dumps them into the prompt, and the LLM synthesizes an answer from scratch. It doesn't remember what it learned last time. It doesn't connect dots across different queries. It doesn't build a compounding model of the world.</p>
+<h2>The Solution: The LLM Wiki Pattern</h2>
+<p>This project demonstrates a different approach: the <strong>LLM Wiki Pattern</strong>. Instead of relying on a vector database for passive retrieval, the agent actively builds and maintains a structured, interlinked knowledge base (a Wiki) in Google Cloud Storage (GCS).</p>
+<p>Key characteristics of this pattern:</p>
+<ol>
+<li><strong>Active Synthesis</strong>: The agent doesn't just retrieve; it reads, summarizes, and integrates new information into existing pages or creates new ones.</li>
+<li><strong>Compounding Memory</strong>: The wiki grows and becomes richer over time. The agent can cross-reference past findings.</li>
+<li><strong>Index-Guided Navigation</strong>: The agent uses a central <code>index.md</code> file to navigate the wiki, avoiding the need for vector databases.</li>
+<li><strong>Knowledge Graph Integration</strong>: The agent captures explicit relationships and tags, creating a true knowledge graph.</li>
+<li><strong>Dynamic Hierarchy</strong>: Files are organized into a multi-layered directory structure that grows dynamically based on domain and topic.</li>
+</ol>
+<h2>Technical Design</h2>
+<p>The system is built using the <strong>Google Agent Development Kit (ADK)</strong> and leverages the <code>gemini-3-flash-preview</code> model for its reasoning and acting capabilities.</p>
+<h3>Architecture</h3>
+<p>The system consists of four main layers:</p>
+<ul>
+<li><strong>Raw Sources</strong>: Immutable files or URLs provided by the user.</li>
+<li><strong>The Wiki</strong>: A dynamic, multi-layered hierarchy of LLM-generated markdown files stored in a GCS bucket.</li>
+<li><strong>The Schema</strong>: A set of rules and conventions (<code>schema.md</code>) that the agent must follow.</li>
+<li><strong>The Web UI</strong>: A Next.js application providing a searchable interface, a tree-view navigation, and an interactive graph view.</li>
+</ul>
+<h3>System Interaction Flow</h3>
+<p>Here is how the components interact:</p>
+<div style="text-align: center; margin: 20px 0;"><img src="diagrams/diagram1.png" alt="Diagram 1"/></div>
+<h3>Agent Internal Architecture</h3>
+<p>While the diagram above shows the system-level interaction, the agent itself is a sophisticated component built with the Google ADK. Here is a look inside the agent:</p>
+<div style="text-align: center; margin: 20px 0;"><img src="diagrams/diagram2.png" alt="Diagram 2"/></div>
+<h3>Key Workflows</h3>
+<ul>
+<li><strong>Ingestion</strong>: When new content is provided, the agent extracts the text, creates a summary in the <code>sources/</code> directory, identifies key entities, concepts, and protocols (like MCP), and places them in a logically determined hierarchical directory. It also identifies explicit relationships and tags, updates the <code>index.md</code>, and logs the action.</li>
+<li><strong>Querying</strong>: To answer a question, the agent consults <code>index.md</code> to locate relevant pages, reads them, and synthesizes a response, citing the sources.</li>
+</ul>
+<h2>Rich Visualization and Discovery</h2>
+<p>To make this compounding memory accessible to humans, the project includes a custom Web UI:</p>
+<ol>
+<li><strong>Tree-View Sidebar</strong>: Dynamically generates a navigation tree supporting arbitrary depth, making it easy to explore the hierarchical structure.</li>
+<li><strong>Interactive Graph View</strong>: Visualizes nodes (files and tags) and links (general links and explicit relationships).
+<ul>
+<li><strong>Tag Clustering</strong>: Files cluster around shared tag nodes, revealing common topics.</li>
+<li><strong>Relationship Highlighting</strong>: Explicit relationships are rendered in distinct colors with directionality.</li>
+</ul>
+</li>
+<li><strong>Perspective Rendering</strong>: Clicking a node filters the graph to show only that node and its immediate neighbors, allowing you to focus on specific contexts.</li>
+</ol>
+<p><img src="./frontend_screenshot.png" alt="Knowledge Agent Wiki Frontend" /></p>
+<h2>The LLM Wiki Pattern vs. Traditional RAG</h2>
+<p>To fully appreciate the benefits of this approach, let's compare it directly with traditional Retrieval-Augmented Generation (RAG).</p>
+<h3>Traditional RAG: Passive and Stateless</h3>
+<p>In a standard RAG setup:</p>
+<ol>
+<li><strong>Ingestion</strong>: Documents are chunked, embedded, and stored in a vector database. This is a largely automated, non-semantic process.</li>
+<li><strong>Retrieval</strong>: A user query is embedded, and the system retrieves top-$K$ chunks based on vector similarity.</li>
+<li><strong>Generation</strong>: The LLM reads the chunks and generates an answer.</li>
+</ol>
+<p><strong>Limitations:</strong></p>
+<ul>
+<li><strong>Lack of Synthesis</strong>: The system never synthesizes the chunks into a coherent whole <em>before</em> query time.</li>
+<li><strong>No Cross-Referencing</strong>: It struggles to connect dots across different documents unless they happen to be retrieved together.</li>
+<li><strong>Hallucination Risk</strong>: Vector search can retrieve superficially similar but contextually irrelevant chunks, leading to hallucinated answers.</li>
+</ul>
+<h3>The LLM Wiki Pattern: Active and Stateful</h3>
+<p>The LLM Wiki pattern flips this model by having the agent actively manage a structured knowledge base.</p>
+<p><strong>Key Benefits Over RAG:</strong></p>
+<ol>
+<li><strong>Compounding Intelligence (Stateful Memory)</strong>: Instead of answering every query from raw chunks, the agent reads new information and <em>integrates</em> it into existing knowledge. The wiki becomes smarter over time, just like a human brain or a well-maintained corporate wiki.</li>
+<li><strong>High-Fidelity Relationships</strong>: By using explicit frontmatter relationships and tags, the system creates a high-precision Knowledge Graph. RAG relies on fuzzy semantic similarity; the Wiki pattern uses hard, semantic links created by the LLM itself.</li>
+<li><strong>Reduced Noise and High Precision</strong>: Guided by a central <code>index.md</code> and strict schemas, the agent knows exactly where to find information. It doesn't get confused by similar-sounding but unrelated chunks of text.</li>
+<li><strong>Human Auditable and Editable</strong>: Traditional RAG stores data in a complex, binary vector database that humans cannot read or easily fix. The LLM Wiki consists of plain markdown files in GCS. A human expert can read them, spot errors, and edit them directly to correct the agent's memory.</li>
+<li><strong>Zero Vector Infrastructure</strong>: You don't need to manage a vector database, handle embedding models, or tune chunk sizes and overlap parameters. This significantly reduces infrastructure cost and complexity.</li>
+</ol>
+<h2>Why This Is So Important</h2>
+<p>The LLM Wiki pattern represents a step towards more autonomous and capable AI agents.</p>
+<ul>
+<li><strong>From Retrieval to Knowledge Management</strong>: It shifts the paradigm from passive retrieval to active knowledge management. The agent is not just a search engine; it is a researcher and a librarian.</li>
+<li><strong>Enabling Continuous Learning</strong>: It provides a concrete mechanism for agents to accumulate knowledge over time, overcoming the context window limitations of individual sessions.</li>
+<li><strong>Foundation for Complex Reasoning</strong>: A structured, interlinked knowledge base is a much better foundation for complex, multi-step reasoning than a pile of disconnected document chunks.</li>
+</ul>
+<p>This project shows that with the right scaffolding and tools, LLMs can be empowered to manage their own knowledge, leading to more intelligent and reliable behavior.</p>
+
+</body>
+</html>

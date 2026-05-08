@@ -1,0 +1,27 @@
+graph TD
+    User([User]) -->|Query/Ingest| Agent[LLM Wiki Agent]
+    User -->|Browse/Visualize| UI[Wiki Web UI]
+    Agent -->|Read/Write| GCS[(GCS Wiki Bucket)]
+    UI -->|Read/Generate Graph| GCS
+    Agent -->|Extract Content| Ext[Extractor Tools]
+    Ext -->|Fetch| Web[External URL]
+    Ext -->|Read| File[Local File]
+    
+    subgraph GCS Bucket
+        schema[schema.md]
+        index[index.md]
+        log[log.md]
+        folders[Hierarchical Folders...]
+        sources[sources/]
+    end
+    
+    Agent -.->|Follows Rules| schema
+    Agent -.->|Navigates via| index
+    Agent -.->|Logs Actions to| log
+    
+    subgraph KGF [Knowledge Graph Features]
+        Tags[Tags]
+        Rels[Explicit Relationships]
+    end
+    
+    UI -.->|Visualizes| KGF
