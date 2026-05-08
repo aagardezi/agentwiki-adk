@@ -49,8 +49,9 @@ export default function Home() {
           
           {showGraph && (
             <div className={`${fullscreenGraph ? 'w-full' : 'w-1/2'} border-l border-zinc-800`}>
-              <WikiGraph onNodeClick={setSelectedFile} />
+              <WikiGraph onNodeClick={setSelectedFile} focusedNodeId={selectedFile} />
             </div>
+
           )}
         </div>
       </main>

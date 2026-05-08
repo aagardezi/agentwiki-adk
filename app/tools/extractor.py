@@ -20,9 +20,10 @@ def extract_from_url(url: str) -> str:
 
         client = _get_client()
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=f"Extract the core text and documentation from this webpage:\n{resp.text}",
         )
+
         return response.text
     except Exception as e:
         return f"Error extracting from URL: {e}"
@@ -46,8 +47,9 @@ def extract_from_file(file_path: str) -> str:
             prompt = "Please provide a detailed, comprehensive markdown transcription of this document. Extract all core information, tables, and concepts."
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash", contents=[pdf_part, prompt]
+                model="gemini-3-flash-preview", contents=[pdf_part, prompt]
             )
+
             return response.text
         else:
             # Assume text file

@@ -3,11 +3,13 @@
 This document provides step-by-step instructions to deploy the LLM Wiki Agent to Google Cloud Vertex AI Agent Runtime.
 
 ## Prerequisites
+ 
+ 1.  **Google Cloud Project**: You need an active GCP project.
+ 2.  **Google Cloud SDK (gcloud)**: Installed and authenticated.
+ 3.  **Python & `uv`**: Ensure Python 3.11+ and `uv` are installed.
+ 4.  **`agents-cli`**: Installed via `uv tool install google-agents-cli`.
+ 5.  **Node.js & npm**: (Required for Web UI) Ensure Node.js (v18+) and npm are installed for local testing and building the frontend.
 
-1.  **Google Cloud Project**: You need an active GCP project.
-2.  **Google Cloud SDK (gcloud)**: Installed and authenticated.
-3.  **Python & `uv`**: Ensure Python 3.11+ and `uv` are installed.
-4.  **`agents-cli`**: Installed via `uv tool install google-agents-cli`.
 
 ## Environment Variables
 
@@ -23,17 +25,30 @@ WIKI_BUCKET_NAME=your-custom-wiki-bucket
 LOGS_BUCKET_NAME=your-custom-logs-bucket
 ```
 
-## 1. Enable Required APIs
+## 1. Set Project and Enable Required APIs
 
-Enable the necessary Google Cloud APIs for the project. This command is important because the agent relies on Vertex AI (Agent Runtime) and Cloud Storage to function.
+First, ensure you have set the correct Google Cloud project:
+
+```bash
+gcloud config set project [YOUR_PROJECT_ID]
+```
+
+Then, enable the necessary Google Cloud APIs for the project. This command is important because the agent relies on Vertex AI (Agent Runtime) and Cloud Storage, and the UI relies on Artifact Registry, Cloud Build, and Cloud Run.
 
 ```bash
 gcloud services enable \
     aiplatform.googleapis.com \
-    storage.googleapis.com
+    storage.googleapis.com \
+    artifactregistry.googleapis.com \
+    run.googleapis.com \
+    cloudbuild.googleapis.com
 ```
 - **`aiplatform.googleapis.com`**: Required for Vertex AI Agent Runtime, where the agent is deployed.
 - **`storage.googleapis.com`**: Required for Google Cloud Storage, where the wiki content and manifest are stored.
+- **`artifactregistry.googleapis.com`**: Required for storing the UI Docker image.
+- **`run.googleapis.com`**: Required for deploying the UI to Cloud Run.
+- **`cloudbuild.googleapis.com`**: Required for building the UI Docker image in the cloud.
+
 
 ## 2. Configure GCS Buckets
 
@@ -112,7 +127,47 @@ Alternatively, you can test locally using:
 
 ```bash
 agents-cli playground
-## 6. Deploying the Wiki Web UI to Cloud Run
+## 6. Running the Wiki Web UI Locally
+
+You can run the frontend locally to test the UI and the graph visualization.
+
+### Prerequisites
+
+1.  **Node.js**: Ensure you have Node.js installed (v18+ recommended).
+2.  **Application Default Credentials**: The frontend needs to access GCS. Ensure you have set up Application Default Credentials:
+    ```bash
+    gcloud auth application-default login
+    ```
+
+### Steps
+
+1.  Navigate to the `frontend` directory:
+    ```bash
+    cd frontend
+    ```
+
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+
+3.  Set the `WIKI_BUCKET_NAME` environment variable and start the development server:
+    ```bash
+    # On macOS/Linux
+    WIKI_BUCKET_NAME=[YOUR_WIKI_BUCKET_NAME] npm run dev
+    
+    # On Windows (PowerShell)
+    $env:WIKI_BUCKET_NAME="[YOUR_WIKI_BUCKET_NAME]"; npm run dev
+    ```
+    Replace `[YOUR_WIKI_BUCKET_NAME]` with your specific bucket name (e.g., `agentwiki-adk-wiki-sg`).
+
+4.  Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+> [!NOTE]
+> If port 3000 is already in use, Next.js might fail to start or try to use another port. You can specify a port using `npm run dev -- -p [PORT_NUMBER]`.
+
+
+## 7. Deploying the Wiki Web UI to Cloud Run
 
 The UI is located in the `frontend` directory and is built as a Next.js application.
 
@@ -171,4 +226,5 @@ gcloud storage buckets add-iam-policy-binding gs://[YOUR_WIKI_BUCKET_NAME] \
 ```
 
 This ensures the UI can read the markdown files and generate the graph.
+
 

@@ -1,6 +1,7 @@
-# LLM Wiki Index
+# Knowledge Agent Wiki Index
 
-Welcome to the LLM Wiki.
+Welcome to the Knowledge Agent Wiki.
+
 
 ## Sources
 

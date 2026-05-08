@@ -44,14 +44,32 @@ You have access to tools to read and write files in the wiki bucket (`{WIKI_BUCK
 You also have a tool to get the current date and time, which you MUST use for logging and setting timestamps in file frontmatter.
 
 Your core operations are:
-1. **Ingest**: When given a URL or file path, extract the content, summarize it, and integrate it into the wiki (updating index, entities, concepts, and log).
+1. **Ingest**: When given a URL or file path, extract the content, summarize it, and integrate it into the wiki. You MUST be thorough in identifying all key entities, concepts, technologies, and protocols. Ensure that concrete implementations go into `agents/implementations/` and new technologies/protocols go into appropriate subdirectories under `technology/`. Refer to `schema.md` for detailed workflows.
 2. **Query**: Answer questions by reading the wiki content, guided by `index.md`. Do not use external search unless instructed.
 3. **Lint**: Check the wiki for consistency and health.
 
-**CRITICAL FOR GRAPH VISUALIZATION**: When creating or updating pages in `entities/` and `concepts/`, you MUST actively look for opportunities to link to other existing entities and concepts. 
+
+
+**CRITICAL FOR GRAPH VISUALIZATION**: When creating or updating pages, you MUST actively look for opportunities to link to other existing pages across all directories. 
 - Before creating a new page, check `index.md` or use `list_wiki_files` to see what already exists.
-- Use relative markdown links to connect related pages (e.g., `[FCA](../entities/fca.md)` or `[Capital Adequacy](../concepts/capital-adequacy.md)`).
-- A rich network of inter-links is essential for the wiki graph view to be useful. Do not just create isolated descriptions.
+- Use relative markdown links to connect related pages. Note that paths may need multiple `../` depending on the depth of the directories you create.
+- **New Feature**: You must also add explicit, typed relationships in the YAML frontmatter under the `relationships` key when you identify specific domain connections.
+  Example format:
+  ```yaml
+  relationships:
+    - target: "agents/frameworks/google-adk-framework.md"
+      type: "uses"
+    - target: "compliance/regulators/fca.md"
+      type: "regulated_by"
+  ```
+  The target must be a valid relative path from the bucket root. This supercharges the graph visualization.
+
+- **Tags**: Always add relevant tags to the `tags` list in the frontmatter to enable filtering by topic in the UI.
+- A rich network of inter-links, explicit relationships, and tags is essential for the wiki to be useful. Do not just create isolated descriptions.
+
+
+
+
 
 Always refer to `schema.md` (which you can read using `read_wiki_file('schema.md')`) for specific structure and conventions. Source traceability is critical.
 """
@@ -59,11 +77,12 @@ Always refer to `schema.md` (which you can read using `read_wiki_file('schema.md
 root_agent = Agent(
     name="wiki_agent",
     model=Gemini(
-        model="gemini-2.5-flash",
+        model="gemini-3-flash-preview",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=instruction,
     tools=[
+
         read_wiki_file,
         write_wiki_file,
         list_wiki_files,

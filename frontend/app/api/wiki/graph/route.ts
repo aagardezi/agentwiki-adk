@@ -14,6 +14,8 @@ interface Node {
 interface Link {
   source: string;
   target: string;
+  isExplicit?: boolean;
+  label?: string;
 }
 
 export async function GET() {
@@ -33,18 +35,23 @@ export async function GET() {
       const id = file.name;
       
       // Skip schema.md as it contains examples that pollute the graph
-      if (id === 'schema.md') {
-          console.log('Skipping schema.md');
+      if (id === 'schema.md' || id === 'log.md' || id.startsWith('logs/')) {
+          console.log(`Skipping ${id}`);
           continue;
       }
+
 
       const label = path.basename(id, '.md');
       let group = 'other';
       
-      if (id.startsWith('entities/')) group = 'entity';
-      else if (id.startsWith('concepts/')) group = 'concept';
+      if (id.includes('/regulators/')) group = 'entity';
+      else if (id.includes('/frameworks/')) group = 'entity';
+      else if (id.includes('/implementations/')) group = 'entity';
+      else if (id.includes('/concepts/')) group = 'concept';
       else if (id.startsWith('sources/')) group = 'source';
+      else if (id.startsWith('technology/')) group = 'concept';
       else if (id === 'index.md') group = 'index';
+
 
       if (!nodeIds.has(id)) {
         nodes.push({ id, label, group });
@@ -81,6 +88,61 @@ export async function GET() {
                             nodes.push({ id: sourcePath, label: path.basename(sourcePath, '.md'), group: 'source' });
                             nodeIds.add(sourcePath);
                         }
+                    }
+                }
+            }
+
+            // Parse tags
+            const tagsMatch = frontmatter.match(/tags:\s*\[(.*?)\]/);
+            if (tagsMatch) {
+                const tagsStr = tagsMatch[1];
+                const tags = tagsStr.split(',').map(s => s.trim().replace(/['"]/g, ''));
+                for (const tag of tags) {
+                    if (tag) {
+                        const tagNodeId = `tag:${tag}`;
+                        console.log(`  Found tag: ${id} -> ${tagNodeId}`);
+                        links.push({ source: id, target: tagNodeId });
+                        
+                        if (!nodeIds.has(tagNodeId)) {
+                            nodes.push({ id: tagNodeId, label: tag, group: 'tag' });
+                            nodeIds.add(tagNodeId);
+                        }
+                    }
+                }
+            }
+
+
+            // Parse explicit relationships
+            const relationshipsMatch = frontmatter.match(/relationships:\s*\n((?:\s+.*\n?)+)/);
+            if (relationshipsMatch) {
+                const relsStr = relationshipsMatch[1];
+                const relRegex = /-\s*target:\s*["']([^"']+)["']\s*\n\s*type:\s*["']([^"']+)["']/g;
+                let relMatch;
+                while ((relMatch = relRegex.exec(relsStr)) !== null) {
+                    let targetId = relMatch[1];
+                    const type = relMatch[2];
+                    
+                    if (targetId) {
+                        if (!targetId.endsWith('.md') && !targetId.includes('.')) {
+                            targetId += '.md';
+                        }
+                        
+                        console.log(`  Found explicit relationship: ${id} -> ${targetId} (${type})`);
+                        links.push({ source: id, target: targetId, isExplicit: true, label: type });
+                        
+                        if (!nodeIds.has(targetId)) {
+                            let group = 'other';
+                            if (targetId.includes('/regulators/')) group = 'entity';
+                            else if (targetId.includes('/frameworks/')) group = 'entity';
+                            else if (targetId.includes('/implementations/')) group = 'entity';
+                            else if (targetId.includes('/concepts/')) group = 'concept';
+                            else if (targetId.startsWith('sources/')) group = 'source';
+                            else if (targetId.startsWith('technology/')) group = 'concept';
+                            
+                            nodes.push({ id: targetId, label: path.basename(targetId, '.md'), group });
+                            nodeIds.add(targetId);
+                        }
+
                     }
                 }
             }
@@ -132,10 +194,13 @@ export async function GET() {
                  
                  // Add target node if not exists (might not be in file list if broken link)
                  if (!nodeIds.has(resolvedTarget)) {
-                      let group = 'unknown';
-                      if (resolvedTarget.startsWith('entities/')) group = 'entity';
-                      else if (resolvedTarget.startsWith('concepts/')) group = 'concept';
+                      let group = 'other';
+                      if (resolvedTarget.includes('/regulators/')) group = 'entity';
+                      else if (resolvedTarget.includes('/frameworks/')) group = 'entity';
+                      else if (resolvedTarget.includes('/implementations/')) group = 'entity';
+                      else if (resolvedTarget.includes('/concepts/')) group = 'concept';
                       else if (resolvedTarget.startsWith('sources/')) group = 'source';
+                      else if (resolvedTarget.startsWith('technology/')) group = 'concept';
                       
                       nodes.push({ id: resolvedTarget, label: path.basename(resolvedTarget, '.md'), group });
                       nodeIds.add(resolvedTarget);
