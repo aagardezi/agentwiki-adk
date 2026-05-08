@@ -58,15 +58,17 @@ graph TD
     Agent -.->|Navigates via| index
     Agent -.->|Logs Actions to| log
     
-    subgraph Knowledge Graph Features
+    subgraph KGF [Knowledge Graph Features]
         Tags[Tags]
         Rels[Explicit Relationships]
     end
     
-    UI -.->|Visualizes| Knowledge Graph Features
+    UI -.->|Visualizes| KGF
+
 ```
 
 ### Agent Internal Architecture
+
 
 While the diagram above shows the system-level interaction, the agent itself is a sophisticated component built with the Google ADK. Here is a look inside the agent:
 
@@ -114,7 +116,8 @@ To make this compounding memory accessible to humans, the project includes a cus
     *   **Relationship Highlighting**: Explicit relationships are rendered in distinct colors with directionality.
 3.  **Perspective Rendering**: Clicking a node filters the graph to show only that node and its immediate neighbors, allowing you to focus on specific contexts.
 
-![Knowledge Agent Wiki Frontend](file:///Users/sgardezi/.gemini/jetski/brain/937d8168-eade-497a-a362-8d10cf567371/frontend_screenshot_1778205296345.png)
+![Knowledge Agent Wiki Frontend](./frontend_screenshot.png)
+
 
 
 
