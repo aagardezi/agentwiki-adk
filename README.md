@@ -18,7 +18,7 @@ Unlike traditional RAG systems that retrieve raw document chunks at query time a
 
 The system consists of four main layers:
 -   **Raw Sources**: Files or URLs provided by the user (immutable).
--   **The Wiki**: A directory of LLM-generated markdown files stored in GCS (`agentwiki-adk-wiki-sg`).
+-   **The Wiki**: A directory of LLM-generated markdown files stored in GCS (configured via `WIKI_BUCKET_NAME` environment variable).
 -   **The Schema**: `schema.md` (also in GCS) defining rules and conventions for the agent.
 -   **The Web UI**: A Next.js application providing:
     -   **Tree View Sidebar**: Dynamically generated navigation supporting arbitrary depth.
@@ -139,6 +139,18 @@ agentwiki-adk/
 -   `agents-cli` installed (`uv tool install google-agents-cli`).
 -   Google Cloud SDK installed and configured.
 
+### Environment Configuration
+
+Before running the agent or the Web UI, you must configure the GCS bucket where the wiki will be stored.
+
+For local development, create a `.env` file in the project root **and** in the `frontend/` directory to define the GCS bucket name:
+
+```env
+WIKI_BUCKET_NAME=your-unique-gcs-bucket-name
+```
+
+*(Note: `.env` files are already configured in `.gitignore` and will not be committed.)*
+
 ### Installation
 
 ```bash
@@ -156,9 +168,9 @@ agents-cli playground
 ## Deployment
 
 > [!IMPORTANT]
-> Detailed step-by-step instructions for deploying this project to Google Cloud Platform (GCP) with secure **direct Identity-Aware Proxy (IAP) integration** are maintained in [instructions.md](file:///Users/sgardezi/work/projects/agentwiki-adk/instructions.md). 
+> Detailed step-by-step instructions for deploying this project to Google Cloud Platform (GCP) with secure **direct Identity-Aware Proxy (IAP) integration** are maintained in [instructions.md](./instructions.md). 
 > 
-> Please refer to [instructions.md](file:///Users/sgardezi/work/projects/agentwiki-adk/instructions.md) for:
+> Please refer to [instructions.md](./instructions.md) for:
 > - Required GCP APIs and IAM Role configurations
 > - Cloud Run service setup with `--iap` flag
 > - GCS Bucket permission binding

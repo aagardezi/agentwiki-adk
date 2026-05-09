@@ -13,12 +13,12 @@ This document provides step-by-step instructions to deploy the LLM Wiki Agent to
 
 ## Environment Variables
 
-The agent can be configured using the following environment variables:
+The agent and frontend require configuration using the following environment variables:
 
--   `WIKI_BUCKET_NAME`: The name of the GCS bucket used for storing the wiki content. Defaults to `agentwiki-adk-wiki-sg` if not set.
--   `LOGS_BUCKET_NAME`: The name of the GCS bucket used for storing telemetry logs and artifacts.
+-   `WIKI_BUCKET_NAME`: **(Required)** The name of the GCS bucket used for storing the wiki content.
+-   `LOGS_BUCKET_NAME`: The name of the GCS bucket used for storing telemetry logs and artifacts (optional).
 
-You can set these in a `.env` file in the project root for local development:
+For local development, you should set these in a `.env` file in the project root **and** in the `frontend/` directory:
 
 ```env
 WIKI_BUCKET_NAME=your-custom-wiki-bucket
@@ -104,7 +104,7 @@ gcloud storage buckets add-iam-policy-binding gs://[YOUR_MANIFEST_BUCKET_NAME] \
 Navigate to the project root directory:
 
 ```bash
-cd /Users/sgardezi/work/projects/agentwiki-adk
+cd <your-project-root-directory>
 ```
 
 Deploy the agent using `agents-cli`:
@@ -159,7 +159,7 @@ You can run the frontend locally to test the UI and the graph visualization.
     # On Windows (PowerShell)
     $env:WIKI_BUCKET_NAME="[YOUR_WIKI_BUCKET_NAME]"; npm run dev
     ```
-    Replace `[YOUR_WIKI_BUCKET_NAME]` with your specific bucket name (e.g., `agentwiki-adk-wiki-sg`).
+    Replace `[YOUR_WIKI_BUCKET_NAME]` with your specific bucket name (e.g., `my-llm-wiki-bucket`).
 
 4.  Open [http://localhost:3000](http://localhost:3000) in your browser.
 
@@ -250,5 +250,69 @@ The Cloud Run service needs permission to read from the GCS wiki bucket.
         --role="roles/storage.objectViewer"
     ```
     Replace `[YOUR_PROJECT_NUMBER]` and `[YOUR_WIKI_BUCKET_NAME]` with your specific values.
+
+
+## 8. Enabling Telemetry & Observability
+
+The LLM Wiki Agent project comes integrated with standard **OpenTelemetry (OTel)** instrumentation and completion hooks configured to export GenAI telemetry traces to Google Cloud Storage (GCS). 
+
+This allows you to monitor model performance, latency, token consumption, and execution success rates.
+
+### Local Telemetry Setup
+
+To enable tracing during local development (using the `playground`):
+
+1.  **Create a Telemetry GCS Bucket**:
+    Create a separate, secure GCS bucket dedicated to telemetry logs:
+    ```bash
+    gcloud storage buckets create gs://your-telemetry-logs-bucket --location=us-central1
+    ```
+
+2.  **Configure Local Environment Variables**:
+    Open the `.env` file in the project root and add the following parameters:
+    ```env
+    # The GCS bucket to upload JSONL trace entries
+    LOGS_BUCKET_NAME=your-telemetry-logs-bucket
+    
+    # Set to 'true' to activate the telemetry completion hooks
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
+    ```
+
+3.  **Run the Agent**:
+    Start the agent playground. You will see the following confirmation log in the terminal startup:
+    `INFO:root:Prompt-response logging enabled - mode: NO_CONTENT (metadata only, no prompts/responses)`
+
+### Production Setup (Cloud Run / Agent Engine)
+
+To activate GenAI telemetry traces in the deployed production environment, supply the telemetry environment variables during service deployment:
+
+```bash
+gcloud run deploy wiki-ui \
+    --image us-central1-docker.pkg.dev/[YOUR_PROJECT_ID]/agentwiki-repo/wiki-ui:latest \
+    --platform managed \
+    --region us-central1 \
+    --no-allow-unauthenticated \
+    --iap \
+    --set-env-vars WIKI_BUCKET_NAME=[YOUR_WIKI_BUCKET_NAME],LOGS_BUCKET_NAME=[YOUR_TELEMETRY_LOGS_BUCKET],OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
+```
+
+#### Required IAM Permissions
+The Cloud Run runtime service account needs write permissions to upload telemetry logs.
+Grant the service account **Storage Object Creator** (`roles/storage.objectCreator`) on the logs bucket:
+```bash
+gcloud storage buckets add-iam-policy-binding gs://[YOUR_TELEMETRY_LOGS_BUCKET] \
+    --member="serviceAccount:[YOUR_PROJECT_NUMBER]-compute@developer.gserviceaccount.com" \
+    --role="roles/storage.objectCreator"
+```
+
+---
+
+### 🔒 Security & Data Privacy Note
+
+> [!IMPORTANT]
+> **Enterprise PII-Safe Logs**: To prevent leakage of customer queries or proprietary backend responses in operational logs, the telemetry subsystem actively overrides the OpenTelemetry interception standard to **`NO_CONTENT`**. 
+> 
+> *   **Captured Metadata**: Trace logs **only** record performance and utilization metrics (token counts, execution latency, API return codes, and model identifiers).
+> *   **Protected Content**: The actual textual content of the prompts and LLM replies are **strictly suppressed** and are **never** written or saved to the GCS telemetry bucket.
 
 

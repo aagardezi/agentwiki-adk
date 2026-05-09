@@ -4,7 +4,7 @@ This document defines the structure, conventions, and workflows for the LLM Wiki
 
 ## Directory Structure
 
-The wiki is stored in the GCS bucket `agentwiki-adk-wiki-sg`. The structure is **dynamic and multi-layered**. The agent should organize files into logical directories and subdirectories based on domain and topic.
+The wiki is stored in the GCS bucket `your-wiki-bucket-name`. The structure is **dynamic and multi-layered**. The agent should organize files into logical directories and subdirectories based on domain and topic.
 
 Special files at the root:
 - `index.md`: Content-oriented catalog of all pages.

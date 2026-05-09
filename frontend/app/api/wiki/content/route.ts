@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { Storage } from '@google-cloud/storage';
 import path from 'path';
 
-const BUCKET_NAME = process.env.WIKI_BUCKET_NAME || 'agentwiki-adk-wiki-sg';
+const BUCKET_NAME = process.env.WIKI_BUCKET_NAME || 'YOUR_WIKI_BUCKET_NAME';
 const storage = new Storage();
 
 export async function GET(request: Request) {

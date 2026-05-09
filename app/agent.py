@@ -1,22 +1,22 @@
 # ruff: noqa
-# Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import datetime
 import os
 from dataclasses import dataclass
 from zoneinfo import ZoneInfo
+
+def load_local_env():
+    """Loads environment variables from a local .env file if it exists in the project root."""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, val = line.split("=", 1)
+                    os.environ.setdefault(key.strip(), val.strip())
+
+load_local_env()
 
 import google.auth
 from google import genai
@@ -35,7 +35,7 @@ from app.tools.gcs_io import (
 )
 from app.tools.extractor import extract_from_url, extract_from_file
 
-WIKI_BUCKET_NAME = os.environ.get("WIKI_BUCKET_NAME", "agentwiki-adk-wiki-sg")
+WIKI_BUCKET_NAME = os.environ.get("WIKI_BUCKET_NAME", "YOUR_WIKI_BUCKET_NAME")
 
 
 @dataclass
