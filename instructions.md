@@ -44,7 +44,7 @@ gcloud services enable \
     cloudbuild.googleapis.com
 ```
 - **`aiplatform.googleapis.com`**: Required for Vertex AI Agent Runtime, where the agent is deployed.
-- **`storage.googleapis.com`**: Required for Google Cloud Storage, where the wiki content and manifest are stored.
+- **`storage.googleapis.com`**: Required for Google Cloud Storage, where the wiki content is stored.
 - **`artifactregistry.googleapis.com`**: Required for storing the UI Docker image.
 - **`run.googleapis.com`**: Required for deploying the UI to Cloud Run.
 - **`cloudbuild.googleapis.com`**: Required for building the UI Docker image in the cloud.
@@ -55,13 +55,11 @@ gcloud services enable \
 The agent relies on GCS buckets. Ensure they exist and you have access to them:
 
 -   **Wiki Bucket**: `[YOUR_WIKI_BUCKET_NAME]` (Stores the wiki pages, schema, index, and log). You can override this by setting `WIKI_BUCKET_NAME`.
--   **Manifest Bucket**: `[YOUR_MANIFEST_BUCKET_NAME]` (Stores the `rag_manifest.json`).
 
 If they do not exist, create them:
 
 ```bash
 gcloud storage buckets create gs://[YOUR_WIKI_BUCKET_NAME]
-gcloud storage buckets create gs://[YOUR_MANIFEST_BUCKET_NAME]
 ```
 - **`gcloud storage buckets create`**: This command creates the specified buckets in your project. They are necessary to hold the agent's knowledge base and configuration.
 
@@ -69,7 +67,6 @@ Upload the initial files (if not already done):
 
 ```bash
 gcloud storage cp schema.md log.md index.md gs://[YOUR_WIKI_BUCKET_NAME]/
-gcloud storage cp rag_manifest.json gs://[YOUR_MANIFEST_BUCKET_NAME]/
 ```
 - **`gcloud storage cp`**: This command copies local files to the specified GCS bucket. This is important to initialize the wiki with the schema, an empty index, and the log file so the agent has a starting point.
 
@@ -86,14 +83,10 @@ To deploy the agent, your user account (or the account running the deployment) n
 When you deploy the agent to Vertex AI Agent Runtime, it will run as a service account created by Vertex AI. You need to grant this service account access to the GCS buckets so it can read and write files.
 
 1.  Find the service account email. It usually looks like: `service-<PROJECT_NUMBER>@gcp-sa-aiplatform-re.iam.gserviceaccount.com`. You can see it in the deployment output or in the IAM console after the first deployment attempt.
-2.  Grant this service account the **Storage Object Admin** role on both the wiki and manifest buckets:
+2.  Grant this service account the **Storage Object Admin** role on the wiki bucket:
 
 ```bash
 gcloud storage buckets add-iam-policy-binding gs://[YOUR_WIKI_BUCKET_NAME] \
-    --member="serviceAccount:service-[YOUR_PROJECT_NUMBER]@gcp-sa-aiplatform-re.iam.gserviceaccount.com" \
-    --role="roles/storage.objectAdmin"
-
-gcloud storage buckets add-iam-policy-binding gs://[YOUR_MANIFEST_BUCKET_NAME] \
     --member="serviceAccount:service-[YOUR_PROJECT_NUMBER]@gcp-sa-aiplatform-re.iam.gserviceaccount.com" \
     --role="roles/storage.objectAdmin"
 ```

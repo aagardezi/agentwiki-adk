@@ -126,7 +126,6 @@ agentwiki-adk/
 ├── schema.md             # Initial schema (uploaded to GCS)
 ├── index.md              # Initial index (uploaded to GCS)
 ├── log.md                # Initial log (uploaded to GCS)
-├── rag_manifest.json     # Initial manifest (uploaded to GCS)
 └── README.md             # This file
 ```
 
