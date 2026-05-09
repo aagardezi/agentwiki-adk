@@ -100,17 +100,20 @@ Navigate to the project root directory:
 cd <your-project-root-directory>
 ```
 
-Deploy the agent using `agents-cli`:
+Deploy the agent using `agents-cli`. Make sure to specify your GCP project ID and inject your custom GCS bucket name using the `--update-env-vars` parameter:
 
 ```bash
-agents-cli deploy
+agents-cli deploy --project [YOUR_PROJECT_ID] --no-confirm-project --update-env-vars WIKI_BUCKET_NAME=[YOUR_WIKI_BUCKET_NAME]
 ```
+
+-   **`--project [YOUR_PROJECT_ID]`**: Specifies the GCP project to deploy the agent reasoning engine to.
+-   **`--no-confirm-project`**: Skips the interactive project confirmation step.
+-   **`--update-env-vars WIKI_BUCKET_NAME=[YOUR_WIKI_BUCKET_NAME]`**: **(Critical)** Feeds your specific GCS wiki bucket name into the reasoning engine's runtime environment. Without this parameter, the reasoning engine will fall back to a default value and throw invalid bucket name errors.
 
 This command will:
 -   Introspect your application.
 -   Package the code.
 -   Deploy it to Vertex AI Agent Runtime.
-- **`agents-cli deploy`**: This command automates the deployment process to Vertex AI Agent Runtime. It is the final step to make your agent available in the cloud.
 
 ## 5. Verification
 

@@ -1,9 +1,13 @@
 import os
+
 from google.cloud import storage
+
 
 def load_local_env():
     """Loads environment variables from a local .env file if it exists in the project root."""
-    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+    env_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"
+    )
     if os.path.exists(env_path):
         with open(env_path) as f:
             for line in f:
@@ -11,6 +15,7 @@ def load_local_env():
                 if line and not line.startswith("#") and "=" in line:
                     key, val = line.split("=", 1)
                     os.environ.setdefault(key.strip(), val.strip())
+
 
 load_local_env()
 
