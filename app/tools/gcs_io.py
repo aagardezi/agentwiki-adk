@@ -2,24 +2,9 @@ import os
 
 from google.cloud import storage
 
+from app.config import WIKI_BUCKET_NAME
 
-def load_local_env():
-    """Loads environment variables from a local .env file if it exists in the project root."""
-    env_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"
-    )
-    if os.path.exists(env_path):
-        with open(env_path) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key, val = line.split("=", 1)
-                    os.environ.setdefault(key.strip(), val.strip())
-
-
-load_local_env()
-
-BUCKET_NAME = os.environ.get("WIKI_BUCKET_NAME", "YOUR_WIKI_BUCKET_NAME")
+BUCKET_NAME = WIKI_BUCKET_NAME
 
 
 def _get_bucket():
