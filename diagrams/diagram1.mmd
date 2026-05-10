@@ -1,27 +1,30 @@
 graph TD
-    User([User]) -->|Query/Ingest| Agent[LLM Wiki Agent]
-    User -->|Browse/Visualize| UI[Wiki Web UI]
-    Agent -->|Read/Write| GCS[(GCS Wiki Bucket)]
-    UI -->|Read/Generate Graph| GCS
-    Agent -->|Extract Content| Ext[Extractor Tools]
-    Ext -->|Fetch| Web[External URL]
-    Ext -->|Read| File[Local File]
+    User([User]) -->|1. Ingest / Query Request| Orch[Orchestrator Agent]
+    User -->|Browse & Audit| UI[Wiki Web UI]
+
+    subgraph multi_agent ["Hierarchical Multi-Agent System"]
+        Orch -->|2. Extract Source| Ext[Extractor Agent]
+        Orch -->|3. Write Content| Synth[Synthesizer Agent]
+        Orch -->|4. Verify Factual Integrity| Rev[Reviewer Agent]
+        Orch -->|5. Re-Index & Log| Lib[Librarian Agent]
+        Orch -->|6. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
+    end
+
+    Ext -->|Extract| ExtTools[Extractor Tools]
+    Synth -->|Read/Write Pages| GCS[(GCS Wiki Bucket)]
+    Rev -->|Factual Audit| GCS
+    Lib -->|Maintain Index & Gaps| GCS
+    SchemaMgr -->|Read/Merge Proposals| GCS
     
-    subgraph GCS Bucket
+    UI -->|Fetch Graph/Tree| GCS
+
+    subgraph gcs_bucket ["GCS Bucket Layout"]
         schema[schema.md]
         index[index.md]
         log[log.md]
-        folders[Hierarchical Folders...]
-        sources[sources/]
+        gaps[gaps.md]
+        proposals[schema_proposals.md]
+        hierarchy[Dynamic Hierarchical Folders...]
     end
-    
-    Agent -.->|Follows Rules| schema
-    Agent -.->|Navigates via| index
-    Agent -.->|Logs Actions to| log
-    
-    subgraph KGF [Knowledge Graph Features]
-        Tags[Tags]
-        Rels[Explicit Relationships]
-    end
-    
-    UI -.->|Visualizes| KGF
+
+    GCS --- gcs_bucket
