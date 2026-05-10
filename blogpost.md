@@ -23,84 +23,110 @@ Key characteristics of this pattern:
 The system is built using the **Google Agent Development Kit (ADK)** and leverages the `gemini-3-flash-preview` model for its reasoning and acting capabilities.
 
 
-### Architecture
+### Hierarchical Multi-Agent Architecture
 
-The system consists of four main layers:
--   **Raw Sources**: Immutable files or URLs provided by the user.
--   **The Wiki**: A dynamic, multi-layered hierarchy of LLM-generated markdown files stored in a GCS bucket.
--   **The Schema**: A set of rules and conventions (`schema.md`) that the agent must follow.
--   **The Web UI**: A Next.js application providing a searchable interface, a tree-view navigation, and an interactive graph view.
+Rather than a single monolithic agent attempting to execute all steps sequentially, the system leverages a **hierarchical multi-agent orchestration topology** built using the Google Agent Development Kit (ADK). A central, highly structured orchestrator delegates specialized operational tasks to autonomous sub-agents:
 
+- **Orchestrator Agent** ([agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agent.py)): Coordinates incoming queries, triggers pipeline ingest cycles, delegates specialized subtasks, and compiles final reports.
+- **Extractor Agent** ([extractor_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/extractor_agent.py)): Dedicated solely to source document retrieval, safely extracting un-truncated text content from PDFs, text files, and web URLs.
+- **Synthesizer Agent** ([synthesizer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/synthesizer_agent.py)): The composition engine that ingests source text, extracts structural entities and tags, and generates or modifies dynamic markdown files in GCS with typed relationships.
+- **Reviewer Agent** ([reviewer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/reviewer_agent.py)): The quality auditor. It parses newly written files to check for schema compliance, cross-checks claims against the whole wiki for contradictions, and creates stubs for knowledge gaps.
+- **Librarian Agent** ([librarian_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/librarian_agent.py)): The bookkeeper. It updates the navigational index `index.md`, records chronological changes in `log.md`, and notes unresolved stubs in `gaps.md`.
+- **Schema Manager Agent** ([schema_manager_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/schema_manager_agent.py)): **Conditional Execution**. This administrative agent runs only when pending directory schema revisions are logged in `schema_proposals.md`. It presents the suggested extensions and interactively updates the global `schema.md` file.
 
-### System Interaction Flow
-
-Here is how the components interact:
+### Multi-Agent Topology
 
 ```mermaid
 graph TD
-    User([User]) -->|Query/Ingest| Agent[LLM Wiki Agent]
-    User -->|Browse/Visualize| UI[Wiki Web UI]
-    Agent -->|Read/Write| GCS[(GCS Wiki Bucket)]
-    UI -->|Read/Generate Graph| GCS
-    Agent -->|Extract Content| Ext[Extractor Tools]
-    Ext -->|Fetch| Web[External URL]
-    Ext -->|Read| File[Local File]
+    User([User]) -->|1. Ingest / Query Request| Orch[Orchestrator Agent]
+    User -->|Browse & Audit| UI[Wiki Web UI]
+
+    subgraph multi_agent ["Hierarchical Multi-Agent System"]
+        Orch -->|2. Extract Source| Ext[Extractor Agent]
+        Orch -->|3. Write Content| Synth[Synthesizer Agent]
+        Orch -->|4. Verify Factual Integrity| Rev[Reviewer Agent]
+        Orch -->|5. Re-Index & Log| Lib[Librarian Agent]
+        Orch -->|6. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
+    end
+
+    Ext -->|Extract| ExtTools[Extractor Tools]
+    Synth -->|Read/Write Pages| GCS[(GCS Wiki Bucket)]
+    Rev -->|Factual Audit| GCS
+    Lib -->|Maintain Index & Gaps| GCS
+    SchemaMgr -->|Read/Merge Proposals| GCS
     
-    subgraph GCS Bucket
+    UI -->|Fetch Graph/Tree| GCS
+
+    subgraph gcs_bucket ["GCS Bucket Layout"]
         schema[schema.md]
         index[index.md]
         log[log.md]
-        folders[Hierarchical Folders...]
-        sources[sources/]
+        gaps[gaps.md]
+        proposals[schema_proposals.md]
+        hierarchy[Dynamic Hierarchical Folders...]
     end
-    
-    Agent -.->|Follows Rules| schema
-    Agent -.->|Navigates via| index
-    Agent -.->|Logs Actions to| log
-    
-    subgraph KGF [Knowledge Graph Features]
-        Tags[Tags]
-        Rels[Explicit Relationships]
-    end
-    
-    UI -.->|Visualizes| KGF
 
+    GCS --- gcs_bucket
 ```
 
-### Agent Internal Architecture
+### Core System Workflows
 
+#### Ingestion Pipeline
 
-While the diagram above shows the system-level interaction, the agent itself is a sophisticated component built with the Google ADK. Here is a look inside the agent:
+When a resource (file, URL, or raw text) is added to the wiki, the Orchestrator executes an automated, multi-stage pipeline:
 
 ```mermaid
-graph LR
-    subgraph Agent [LLM Wiki Agent]
-        direction TB
-        Core[Agent Core / Instructions]
-        Model[Gemini 3 Flash Preview]
-        
-        subgraph Toolset [ADK Tools]
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant Extractor as Extractor Agent
+    participant Synthesizer as Synthesizer Agent
+    participant Reviewer as Reviewer Agent
+    participant Librarian as Librarian Agent
+    participant GCS as GCS Storage Bucket
 
-            direction LR
-            T1[read_wiki_file]
-            T2[write_wiki_file]
-            T3[list_wiki_files]
-            T4[wiki_file_exists]
-            T5[extract_from_url]
-            T6[extract_from_file]
-            T7[get_current_date_time]
-        end
-        
-        Core <--> Model
-        Core --> Toolset
-    end
-    
-    User -->|Query / Ingest| Core
-    Toolset -->|Read/Write| GCS[(GCS Bucket)]
-    Toolset -->|Fetch/Extract| External[Web / Local Files]
+    User->>Orchestrator: Ingest Request (Source URL/File)
+    Orchestrator->>Extractor: Extract content
+    Extractor->>Orchestrator: Extracted source text
+    Orchestrator->>Synthesizer: Write wiki pages
+    Synthesizer->>GCS: Read existing pages & write updates
+    Synthesizer->>Orchestrator: Manifest of modified pages
+    Orchestrator->>Reviewer: Verify factual integrity
+    Reviewer->>GCS: Cross-check claims & verify directory schema
+    Reviewer->>Orchestrator: Factual audit & contradiction review report
+    Orchestrator->>Librarian: Re-index & Log
+    Librarian->>GCS: Update index.md, log.md, gaps.md & proposals
+    Librarian->>Orchestrator: Confirmation
+    Orchestrator->>User: Final ingestion summary & health delta
 ```
 
-### Key Workflows
+#### Schema Evolution Pipeline
+
+To accommodate new knowledge domains without manual intervention, the orchestrator runs an interactive schema evolution workflow. The `SchemaManagerAgent` acts conditionally, executing only when there are proposals to process:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant SchemaMgr as Schema Manager Agent
+    participant GCS as GCS Storage Bucket
+
+    User->>Orchestrator: Schema Manage/Review Request
+    Orchestrator->>SchemaMgr: Check schema proposals
+    SchemaMgr->>GCS: Read schema_proposals.md
+    alt No pending proposals
+        SchemaMgr-->>User: No pending schema proposals found
+    else Pending proposals exist
+        SchemaMgr->>User: Present proposals for interactive approval
+        User->>SchemaMgr: Approve/Reject proposal selections
+        SchemaMgr->>GCS: Merge approved definitions into schema.md
+        SchemaMgr->>GCS: Clear approved entries from schema_proposals.md
+        SchemaMgr-->>User: Merge and update confirmation
+    end
+```
+
 
 
 -   **Ingestion**: When new content is provided, the agent extracts the text, creates a summary in the `sources/` directory, identifies key entities, concepts, and protocols (like MCP), and places them in a logically determined hierarchical directory. It also identifies explicit relationships and tags, updates the `index.md`, and logs the action.
@@ -110,11 +136,15 @@ graph LR
 
 To make this compounding memory accessible to humans, the project includes a custom Web UI:
 
-1.  **Tree-View Sidebar**: Dynamically generates a navigation tree supporting arbitrary depth, making it easy to explore the hierarchical structure.
-2.  **Interactive Graph View**: Visualizes nodes (files and tags) and links (general links and explicit relationships).
-    *   **Tag Clustering**: Files cluster around shared tag nodes, revealing common topics.
-    *   **Relationship Highlighting**: Explicit relationships are rendered in distinct colors with directionality.
-3.  **Perspective Rendering**: Clicking a node filters the graph to show only that node and its immediate neighbors, allowing you to focus on specific contexts.
+1.  **Tree-View Sidebar**: Dynamically generates a navigation tree supporting arbitrary depth, making it easy to explore the dynamic hierarchical folder structure.
+2.  **Interactive Force-Directed Graph View**: Visualizes files, concepts, and tags as nodes, and links them via direct references and explicit frontmatter relationships.
+    *   **Tag Clustering**: Files cluster around shared tag nodes, instantly revealing common knowledge areas.
+    *   **Ontological Line Coloration**: Explicit relationships are colored according to their semantic type (e.g. `regulated_by`, `contradicts`), illustrating the direction of knowledge flow.
+3.  **Perspective Rendering**: Clicking any node instantly filters the graph to focus solely on that node and its immediate first-degree neighbors, keeping complex systems clean and readable.
+4.  **Ontology State Badges**: Pages display visual status badges indicating whether a page is `ACTIVE` (verified), `STUB` (empty placeholder referencing knowledge gaps), or `CONTESTED` (flagged for factual contradictions).
+5.  **Dynamic Confidence circular gauges**: High-fidelity circular progress meters render the Synthesizer's confidence scores directly within the document header.
+6.  **Contested Warning Banners**: A prominent warning block is rendered at the top of any contested page, alerting human editors to audit contradictory claims.
+7.  **Relationship and References Inspector**: Renders tables of incoming/outgoing typed relationships next to the document text, allowing immediate human navigation.
 
 ![Knowledge Agent Wiki Frontend](./frontend_screenshot.png)
 
@@ -149,8 +179,34 @@ The LLM Wiki pattern flips this model by having the agent actively manage a stru
 4.  **Human Auditable and Editable**: Traditional RAG stores data in a complex, binary vector database that humans cannot read or easily fix. The LLM Wiki consists of plain markdown files in GCS. A human expert can read them, spot errors, and edit them directly to correct the agent's memory.
 5.  **Zero Vector Infrastructure**: You don't need to manage a vector database, handle embedding models, or tune chunk sizes and overlap parameters. This significantly reduces infrastructure cost and complexity.
 
-## Why This Is So Important
+---
 
+## Unique and Powerful Implementation Features
+
+This multi-agent implementation introduces several cutting-edge features that elevate it far beyond a simple file-writer:
+
+### 🛡️ 1. Double-Verifier Claim Pipeline
+When new content is ingested, the **Synthesizer Agent** writes updates with a calculated confidence score. However, before these changes are committed, the independent **Reviewer Agent** acts as a strict auditor. It cross-checks every claim against the entire existing wiki. If it detects a logical or factual mismatch, it does not crash; instead, it flags the file as `contested: true` and alerts the user, providing a highly resilient system that handles contradictory data gracefully.
+
+### 🧬 2. Decentralized Schema Evolution
+Rather than being bound to a static directory structure, this wiki evolves organically. When the Librarian Agent identifies new concepts, it proposes new structural pathways in `schema_proposals.md`. The administrative **Schema Manager Agent** executes **conditionally**—spinning up only when proposals are pending—to allow users to review, select, and automatically merge new directories into the global `schema.md` conventions.
+
+### 🩺 3. Real-Time Quantitative Health Auditing
+The system features an automated health checking utility ([health.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/tools/health.py)) that scans the repository to calculate an overall **Health Score (0.0 to 1.0)**. This weighted scoring function balances:
+*   **40% Volume of completed pages** vs. empty placeholder stubs.
+*   **40% Average confidence scores** of claims.
+*   **20% Ratio of contested conflicts** in the wiki.
+This provides a clear, actionable metric of knowledge base fidelity.
+
+### 🌐 4. Adaptive Metadata-Guided Interface
+The Obsidian-like Next.js Web UI is fully integrated with this rich metadata layer. 
+*   **Circle Gauges**: Render high-fidelity confidence levels next to claims.
+*   **Factual Alerts**: Dynamic warning boxes instantly alert users at the top of any contested page.
+*   **Ontology Coloration**: Force graph links are styled directionally according to relationship types (e.g., `regulated_by`, `contradicts`), offering instant ontology mapping.
+
+---
+
+## Why This Is So Important
 
 The LLM Wiki pattern represents a step towards more autonomous and capable AI agents.
 
@@ -159,3 +215,4 @@ The LLM Wiki pattern represents a step towards more autonomous and capable AI ag
 -   **Foundation for Complex Reasoning**: A structured, interlinked knowledge base is a much better foundation for complex, multi-step reasoning than a pile of disconnected document chunks.
 
 This project shows that with the right scaffolding and tools, LLMs can be empowered to manage their own knowledge, leading to more intelligent and reliable behavior.
+
