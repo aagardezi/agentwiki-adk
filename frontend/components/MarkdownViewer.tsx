@@ -58,37 +58,69 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
             cleanedContent = rawContent.replace(frontmatterMatch[0], '');
             const fmStr = frontmatterMatch[1];
             
-            // Simple YAML-like parser
+            // Robust YAML-like line-by-line block parser
             const lines = fmStr.split('\n');
             let currentKey = '';
+            let currentList: any[] = [];
+            let currentItem: any = null;
+
             for (const line of lines) {
-                const match = line.match(/^(\w+):\s*(.*)/);
-                if (match) {
-                    currentKey = match[1];
-                    let value = match[2].trim();
-                    
-                    // Handle lists like [a, b]
-                    if (value.startsWith('[') && value.endsWith(']')) {
-                        value = value.slice(1, -1).split(',').map((s: string) => s.trim().replace(/['"]/g, ''));
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+
+                if (line.startsWith('  - ')) {
+                    if (currentItem) currentList.push(currentItem);
+                    currentItem = {};
+                    const lineContent = line.substring(4).trim();
+                    const match = lineContent.match(/^(\w+):\s*(.*)/);
+                    if (match) {
+                        const k = match[1];
+                        let v = match[2].trim();
+                        if (v.startsWith('"') || v.startsWith("'")) v = v.slice(1, -1);
+                        currentItem[k] = v;
                     }
-                    
-                    metadata[currentKey] = value;
-                } else if (line.startsWith('  - ') && currentKey === 'relationships') {
-                    // Handle relationships list
-                     if (!metadata.relationships) metadata.relationships = [];
-                     // We'll need a more complex parser or just manual extraction for relationships
+                } else if (line.startsWith('    ') && currentItem) {
+                    const match = trimmed.match(/^(\w+):\s*(.*)/);
+                    if (match) {
+                        const k = match[1];
+                        let v = match[2].trim();
+                        if (v.startsWith('"') || v.startsWith("'")) v = v.slice(1, -1);
+                        currentItem[k] = v;
+                    }
+                } else {
+                    if (currentItem) {
+                        currentList.push(currentItem);
+                        currentItem = null;
+                    }
+                    if (currentKey && currentList.length > 0) {
+                        metadata[currentKey] = currentList;
+                        currentList = [];
+                    }
+
+                    const match = trimmed.match(/^(\w+):\s*(.*)/);
+                    if (match) {
+                        currentKey = match[1];
+                        let value = match[2].trim();
+
+                        if (value.startsWith('[') && value.endsWith(']')) {
+                            metadata[currentKey] = value.slice(1, -1).split(',').map((s: string) => s.trim().replace(/['"]/g, ''));
+                        } else if (value === 'true') {
+                            metadata[currentKey] = true;
+                        } else if (value === 'false') {
+                            metadata[currentKey] = false;
+                        } else if (!isNaN(Number(value)) && value !== '') {
+                            metadata[currentKey] = Number(value);
+                        } else {
+                            if (value.startsWith('"') || value.startsWith("'")) value = value.slice(1, -1);
+                            metadata[currentKey] = value;
+                        }
+                    }
                 }
             }
-            
-            // Better manual extraction for relationships to avoid complex YAML parser
-            const relRegex = /-\s*target:\s*["']([^"']+)["']\s*\n\s*type:\s*["']([^"']+)["']/g;
-            let relMatch;
-            const relationships = [];
-            while ((relMatch = relRegex.exec(fmStr)) !== null) {
-                relationships.push({ target: relMatch[1], type: relMatch[2] });
-            }
-            if (relationships.length > 0) {
-                metadata.relationships = relationships;
+
+            if (currentItem) currentList.push(currentItem);
+            if (currentKey && currentList.length > 0) {
+                metadata[currentKey] = currentList;
             }
         }
         
@@ -188,6 +220,40 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
                 {metadata.title && <div className="text-xl font-bold text-zinc-100 mb-2">{metadata.title}</div>}
                 {metadata.description && <div className="text-zinc-400 mb-2">{metadata.description}</div>}
                 
+                {/* Styled Badges for Status and Confidence */}
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                    {metadata.status && (
+                        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
+                            metadata.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            metadata.status === 'stub' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                            'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}>
+                            Status: {metadata.status.toUpperCase()}
+                        </span>
+                    )}
+                    {metadata.confidence !== undefined && (
+                        <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1.5">
+                            Confidence: {Math.round(metadata.confidence * 100)}%
+                            <span className="inline-block w-2 h-2 rounded-full bg-blue-400" style={{ opacity: metadata.confidence }}></span>
+                        </span>
+                    )}
+                    {metadata.evidence_count !== undefined && (
+                        <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            Evidence Count: {metadata.evidence_count}
+                        </span>
+                    )}
+                </div>
+
+                {/* Contested Alert Banner */}
+                {metadata.contested === true && (
+                    <div className="mb-4 p-3 bg-rose-950/40 border border-rose-800 text-rose-200 text-xs rounded-lg flex items-center gap-2">
+                        <span className="text-base">⚠️</span>
+                        <div>
+                            <strong className="text-rose-400">CONTESTED KNOWLEDGE:</strong> This page contains conflicting or contradictory claims. Please verify sources below.
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-2 text-xs text-zinc-500">
                     {metadata.created_at && <div><span className="font-semibold">Created:</span> {metadata.created_at}</div>}
                     {metadata.updated_at && <div><span className="font-semibold">Updated:</span> {metadata.updated_at}</div>}
@@ -235,14 +301,17 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
                             <div className="font-semibold mb-1">Relationships:</div>
                             <ul className="list-disc list-inside">
                                 {metadata.relationships.map((rel: any, index: number) => (
-                                    <li key={index}>
+                                    <li key={index} className="text-zinc-400">
                                         <span className="text-blue-400">{rel.type}</span>{' '}
                                         <button
                                             onClick={() => onNavigate(rel.target)}
-                                            className="text-blue-400 hover:underline"
+                                            className="text-blue-400 hover:underline mr-1.5 font-medium"
                                         >
                                             {basename(rel.target, '.md')}
                                         </button>
+                                        {rel.description && (
+                                            <span className="text-zinc-500 italic text-xs">({rel.description})</span>
+                                        )}
                                     </li>
                                 ))}
                             </ul>

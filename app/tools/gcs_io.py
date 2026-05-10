@@ -1,5 +1,3 @@
-import os
-
 from google.cloud import storage
 
 from app.config import WIKI_BUCKET_NAME

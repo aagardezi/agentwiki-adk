@@ -34,7 +34,7 @@ updated_at: <call get_current_date_time>
 sources: [<source_id>]
 tags: [<relevant tags>]
 status: active
-confidence: <0.0–1.0>
+confidence: <0.0-1.0>
 evidence_count: <number of sources supporting this page's claims>
 contested: false
 relationships:
@@ -55,9 +55,9 @@ Valid relationship types (from schema.md):
 - `part_of` — component of a larger whole
 
 Confidence guidelines:
-- 0.9–1.0: Official documentation, peer-reviewed sources, primary standards
-- 0.7–0.9: Reputable secondary sources, established publications
-- 0.5–0.7: Blogs, third-party write-ups, unverified claims
+- 0.9-1.0: Official documentation, peer-reviewed sources, primary standards
+- 0.7-0.9: Reputable secondary sources, established publications
+- 0.5-0.7: Blogs, third-party write-ups, unverified claims
 - Below 0.5: Speculative, conflicting, or single unverified source
 
 Add rich inline markdown links to related pages. Use relative paths.
@@ -76,5 +76,11 @@ CREATE sources/my-source-2026-05-10.md
 Do NOT update `index.md` or `log.md` — the Librarian Agent handles those.
 Do NOT detect contradictions — the Reviewer Agent handles that.
 """,
-    tools=[read_wiki_file, write_wiki_file, list_wiki_files, wiki_file_exists, get_current_date_time],
+    tools=[
+        read_wiki_file,
+        write_wiki_file,
+        list_wiki_files,
+        wiki_file_exists,
+        get_current_date_time,
+    ],
 )

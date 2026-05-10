@@ -20,7 +20,7 @@ wheels = [
 ]
 
 [[package]]
-name = "agentwiki-adk"
+name = "agentwiki-adk-multiagent"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
@@ -59,7 +59,7 @@ requires-dist = [
     { name = "gcsfs", specifier = ">=2024.11.0" },
     { name = "google-adk", specifier = ">=1.15.0,<2.0.0" },
     { name = "google-adk", extras = ["eval"], marker = "extra == 'eval'", specifier = ">=1.15.0,<2.0.0" },
-    { name = "google-cloud-aiplatform", extras = ["evaluation", "agent-engines"], specifier = ">=1.130.0" },
+    { name = "google-cloud-aiplatform", extras = ["agent-engines", "evaluation"], specifier = ">=1.130.0" },
     { name = "google-cloud-logging", specifier = ">=3.12.0,<4.0.0" },
     { name = "google-cloud-storage", specifier = ">=2.14.0" },
     { name = "keyring" },
@@ -3122,8 +3122,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://us-python.pkg.dev/artifact-foundry-prod/ah-3p-staging-python/simple/" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "jeepney" },
+    { name = "cryptography", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "jeepney", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://us-python.pkg.dev/artifact-foundry-prod/ah-3p-staging-python/secretstorage/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be" }
 wheels = [

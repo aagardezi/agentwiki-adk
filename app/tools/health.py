@@ -9,7 +9,7 @@ def compute_wiki_health() -> str:
     """Computes a quantitative health report for the wiki.
 
     Scans all pages for frontmatter metrics and returns a markdown report
-    with totals, averages, and an overall health score (0.0–1.0).
+    with totals, averages, and an overall health score (0.0-1.0).
     """
     files = list_wiki_files()
     if not files:
@@ -45,14 +45,22 @@ def compute_wiki_health() -> str:
             except ValueError:
                 pass
 
-    avg_confidence = round(sum(confidences) / len(confidences), 2) if confidences else 0.0
+    avg_confidence = (
+        round(sum(confidences) / len(confidences), 2) if confidences else 0.0
+    )
 
     # Health score: weighted combination of stub ratio, confidence, and contested ratio
     stub_score = 1.0 - (stubs / max(total, 1))
     contested_score = 1.0 - (contested / max(total, 1))
-    health_score = round(stub_score * 0.4 + avg_confidence * 0.4 + contested_score * 0.2, 2)
+    health_score = round(
+        stub_score * 0.4 + avg_confidence * 0.4 + contested_score * 0.2, 2
+    )
 
-    status = "> Wiki is healthy." if health_score >= 0.8 else "> Wiki needs attention — review stubs and contested pages."
+    status = (
+        "> Wiki is healthy."
+        if health_score >= 0.8
+        else "> Wiki needs attention — review stubs and contested pages."
+    )
 
     return f"""## Wiki Health Report
 

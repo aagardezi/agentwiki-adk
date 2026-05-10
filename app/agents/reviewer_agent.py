@@ -17,7 +17,7 @@ For each updated page in the manifest:
 2. Follow its `relationships` links and read related pages.
 3. If a factual contradiction exists between the new content and an existing page:
    - Set `contested: true` in the frontmatter of both affected pages.
-   - Lower the `confidence` score of the contested claims (subtract 0.1–0.2).
+   - Lower the `confidence` score of the contested claims (subtract 0.1-0.2).
    - Add a blockquote to the relevant section:
      `> **Contested**: [Source A](path) claims X; [Source B](path) claims Y.`
 
