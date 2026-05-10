@@ -1,4 +1,4 @@
-# Beyond RAG: The LLM Wiki Pattern for Compounding Agent Memory
+# Beyond RAG: The Active Knowledge Agent Wiki Pattern for Compounding Agent Memory
 
 ## The Problem with Traditional RAG
 
@@ -6,9 +6,9 @@ Retrieval-Augmented Generation (RAG) has been the go-to pattern for grounding La
 
 When a query comes in, the system searches a vector database for relevant chunks, dumps them into the prompt, and the LLM synthesizes an answer from scratch. It doesn't remember what it learned last time. It doesn't connect dots across different queries. It doesn't build a compounding model of the world.
 
-## The Solution: The LLM Wiki Pattern
+## The Solution: The Active Knowledge Agent Wiki Pattern
 
-This project demonstrates a different approach: the **LLM Wiki Pattern**. Instead of relying on a vector database for passive retrieval, the agent actively builds and maintains a structured, interlinked knowledge base (a Wiki) in Google Cloud Storage (GCS).
+This project demonstrates a different approach: the **Active Knowledge Agent Wiki Pattern**. Instead of relying on a vector database for passive retrieval, the agent actively builds and maintains a structured, interlinked knowledge base (a Wiki) in Google Cloud Storage (GCS).
 
 Key characteristics of this pattern:
 1.  **Active Synthesis**: The agent doesn't just retrieve; it reads, summarizes, and integrates new information into existing pages or creates new ones.
@@ -151,7 +151,7 @@ To make this compounding memory accessible to humans, the project includes a cus
 
 
 
-## The LLM Wiki Pattern vs. Traditional RAG
+## The Active Knowledge Agent Wiki Pattern vs. Traditional RAG
 
 To fully appreciate the benefits of this approach, let's compare it directly with traditional Retrieval-Augmented Generation (RAG).
 
@@ -167,16 +167,16 @@ In a standard RAG setup:
 *   **No Cross-Referencing**: It struggles to connect dots across different documents unless they happen to be retrieved together.
 *   **Hallucination Risk**: Vector search can retrieve superficially similar but contextually irrelevant chunks, leading to hallucinated answers.
 
-### The LLM Wiki Pattern: Active and Stateful
+### The Active Knowledge Agent Wiki Pattern: Active and Stateful
 
-The LLM Wiki pattern flips this model by having the agent actively manage a structured knowledge base.
+The Active Knowledge Agent Wiki pattern flips this model by having the agent actively manage a structured knowledge base.
 
 **Key Benefits Over RAG:**
 
 1.  **Compounding Intelligence (Stateful Memory)**: Instead of answering every query from raw chunks, the agent reads new information and *integrates* it into existing knowledge. The wiki becomes smarter over time, just like a human brain or a well-maintained corporate wiki.
 2.  **High-Fidelity Relationships**: By using explicit frontmatter relationships and tags, the system creates a high-precision Knowledge Graph. RAG relies on fuzzy semantic similarity; the Wiki pattern uses hard, semantic links created by the LLM itself.
 3.  **Reduced Noise and High Precision**: Guided by a central `index.md` and strict schemas, the agent knows exactly where to find information. It doesn't get confused by similar-sounding but unrelated chunks of text.
-4.  **Human Auditable and Editable**: Traditional RAG stores data in a complex, binary vector database that humans cannot read or easily fix. The LLM Wiki consists of plain markdown files in GCS. A human expert can read them, spot errors, and edit them directly to correct the agent's memory.
+4.  **Human Auditable and Editable**: Traditional RAG stores data in a complex, binary vector database that humans cannot read or easily fix. The Active Knowledge Agent Wiki consists of plain markdown files in GCS. A human expert can read them, spot errors, and edit them directly to correct the agent's memory.
 5.  **Zero Vector Infrastructure**: You don't need to manage a vector database, handle embedding models, or tune chunk sizes and overlap parameters. This significantly reduces infrastructure cost and complexity.
 
 ---
@@ -208,11 +208,12 @@ The Obsidian-like Next.js Web UI is fully integrated with this rich metadata lay
 
 ## Why This Is So Important
 
-The LLM Wiki pattern represents a step towards more autonomous and capable AI agents.
+The Active Knowledge Agent Wiki pattern represents a step towards more autonomous and capable AI agents.
 
 -   **From Retrieval to Knowledge Management**: It shifts the paradigm from passive retrieval to active knowledge management. The agent is not just a search engine; it is a researcher and a librarian.
 -   **Enabling Continuous Learning**: It provides a concrete mechanism for agents to accumulate knowledge over time, overcoming the context window limitations of individual sessions.
 -   **Foundation for Complex Reasoning**: A structured, interlinked knowledge base is a much better foundation for complex, multi-step reasoning than a pile of disconnected document chunks.
 
 This project shows that with the right scaffolding and tools, LLMs can be empowered to manage their own knowledge, leading to more intelligent and reliable behavior.
+
 
