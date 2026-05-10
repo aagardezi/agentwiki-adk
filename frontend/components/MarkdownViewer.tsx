@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 // We need a replacement for path.basename that works in browser
 const basename = (path: string, ext?: string) => {
+    if (!path) return '';
     const parts = path.split('/');
     const name = parts[parts.length - 1];
     if (ext && name.endsWith(ext)) {
@@ -103,7 +104,7 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
                         let value = match[2].trim();
 
                         if (value.startsWith('[') && value.endsWith(']')) {
-                            metadata[currentKey] = value.slice(1, -1).split(',').map((s: string) => s.trim().replace(/['"]/g, ''));
+                            metadata[currentKey] = value.slice(1, -1).split(',').map((s: string) => s.trim().replace(/['"]/g, '')).filter(Boolean);
                         } else if (value === 'true') {
                             metadata[currentKey] = true;
                         } else if (value === 'false') {
