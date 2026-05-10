@@ -6,6 +6,7 @@ from google.adk.tools import agent_tool
 from app.agents.extractor_agent import extractor_agent
 from app.agents.librarian_agent import librarian_agent
 from app.agents.reviewer_agent import reviewer_agent
+from app.agents.schema_manager_agent import schema_manager_agent
 from app.agents.synthesizer_agent import synthesizer_agent
 from app.config import WIKI_BUCKET_NAME, get_current_date_time, make_model
 from app.tools.gcs_io import list_wiki_files, read_wiki_file
@@ -19,6 +20,7 @@ instruction = f"""You are the Wiki Orchestrator. You coordinate a team of specia
 - **synthesizer_agent**: Integrates extracted content into the wiki with confidence scoring and typed relationships. Returns a manifest of files written.
 - **reviewer_agent**: Validates consistency, detects contradictions, and creates stub pages for knowledge gaps. Returns a review report.
 - **librarian_agent**: Updates `index.md`, `log.md`, and proposes schema changes when new domains emerge.
+- **schema_manager_agent**: Checks for pending schema proposals and, if any exist, presents them to the user and merges approved ones into `schema.md`.
 
 ## Operations
 
@@ -44,6 +46,12 @@ When asked to lint, health-check, or audit the wiki:
 3. Call `librarian_agent` to log the lint results.
 4. Return the health report plus a summary of issues found.
 
+### Schema Management
+When the user asks to review, merge, or apply schema proposals:
+1. Call `schema_manager_agent`. It will check `schema_proposals.md` automatically.
+2. If proposals exist, it will present them to the user and handle the merge interactively.
+3. If no proposals exist, it will report that nothing is pending.
+
 ### Health Report Only
 When asked just for a health score or quick stats, call `compute_wiki_health` and return the result directly.
 
@@ -59,6 +67,7 @@ root_agent = Agent(
         agent_tool.AgentTool(agent=synthesizer_agent),
         agent_tool.AgentTool(agent=reviewer_agent),
         agent_tool.AgentTool(agent=librarian_agent),
+        agent_tool.AgentTool(agent=schema_manager_agent),
         read_wiki_file,
         list_wiki_files,
         compute_wiki_health,
