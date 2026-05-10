@@ -99,12 +99,12 @@ export async function GET() {
                 const tags = tagsStr.split(',').map(s => s.trim().replace(/['"]/g, ''));
                 for (const tag of tags) {
                     if (tag) {
-                        const tagNodeId = `tag:${tag}`;
+                        const tagNodeId = `tag:${tag.toLowerCase()}`;
                         console.log(`  Found tag: ${id} -> ${tagNodeId}`);
                         links.push({ source: id, target: tagNodeId });
                         
                         if (!nodeIds.has(tagNodeId)) {
-                            nodes.push({ id: tagNodeId, label: tag, group: 'tag' });
+                            nodes.push({ id: tagNodeId, label: tag.toLowerCase(), group: 'tag' });
                             nodeIds.add(tagNodeId);
                         }
                     }

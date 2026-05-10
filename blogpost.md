@@ -128,6 +128,29 @@ sequenceDiagram
 ```
 
 
+#### Retrieval & Q&A Pipeline
+
+When a user queries the wiki for information or a summary (e.g., "Summarize key regulatory frameworks for IAP"), the orchestrator accesses GCS directly to build a citations-grounded summary without vector database overhead:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant GCS as GCS Storage Bucket
+
+    User->>Orchestrator: Q&A/Summary Request (e.g., "Summarize frameworks for IAP")
+    Orchestrator->>GCS: read_wiki_file("index.md")
+    GCS-->>Orchestrator: Index structure and page references
+    Note over Orchestrator: Find highly grounded pages matching<br/>the query via tags and paths
+    Orchestrator->>GCS: read_wiki_file("technology/iap.md")
+    GCS-->>Orchestrator: Target page text & metadata
+    Note over Orchestrator: Synthesize citation-backed response<br/>directly from verified data
+    Orchestrator-->>User: Fully grounded answer with citations
+```
+
+
+
 
 -   **Ingestion**: When new content is provided, the agent extracts the text, creates a summary in the `sources/` directory, identifies key entities, concepts, and protocols (like MCP), and places them in a logically determined hierarchical directory. It also identifies explicit relationships and tags, updates the `index.md`, and logs the action.
 -   **Querying**: To answer a question, the agent consults `index.md` to locate relevant pages, reads them, and synthesizes a response, citing the sources.

@@ -190,7 +190,7 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
             
             <ul className="space-y-2">
                 {allFiles
-                    .filter(file => file.tags && file.tags.includes(filePath.substring(4)))
+                    .filter(file => file.tags && file.tags.map(t => t.toLowerCase()).includes(filePath.substring(4).toLowerCase()))
                     .map(file => (
                         <li key={file.name} className="flex items-center gap-2">
                             <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
@@ -205,7 +205,7 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
                     ))
                 }
             </ul>
-            {allFiles.filter(file => file.tags && file.tags.includes(filePath.substring(4))).length === 0 && (
+            {allFiles.filter(file => file.tags && file.tags.map(t => t.toLowerCase()).includes(filePath.substring(4).toLowerCase())).length === 0 && (
                 <div className="text-zinc-600 text-sm">No files found with this tag.</div>
             )}
           </div>
@@ -331,7 +331,7 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
                 </div>
                 <ul className="space-y-1">
                     {allFiles
-                        .filter(file => file.tags && file.tags.includes(selectedTag))
+                        .filter(file => file.tags && file.tags.map(t => t.toLowerCase()).includes(selectedTag.toLowerCase()))
                         .map(file => (
                             <li key={file.name}>
                                 <button

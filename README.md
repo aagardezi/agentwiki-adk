@@ -134,6 +134,28 @@ sequenceDiagram
 ```
 
 
+#### Retrieval & Q&A Pipeline
+
+When a user asks a question to retrieve or summarize information from the wiki (e.g., "Summarize the compliance frameworks for IAP"), the system bypasses traditional vector retrieval databases. Instead, the Orchestrator uses the central index file to locate highly relevant, hand-grounded documents and files:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant GCS as GCS Storage Bucket
+
+    User->>Orchestrator: Q&A/Summary Request (e.g., "Summarize frameworks for IAP")
+    Orchestrator->>GCS: read_wiki_file("index.md")
+    GCS-->>Orchestrator: Central Index mappings & tags
+    Note over Orchestrator: Analyze Index to locate matching paths<br/>based on tags, directories, and links
+    Orchestrator->>GCS: read_wiki_file("technology/iap.md")
+    GCS-->>Orchestrator: Document frontmatter & markdown body
+    Note over Orchestrator: Parse document content,<br/>synthesize summary, and formulate citations
+    Orchestrator-->>User: Grounded response with explicit file citations
+```
+
+
 ---
 
 ## The Active Knowledge Agent Wiki Pattern vs. Traditional RAG
