@@ -38,12 +38,13 @@ The system is powered by a **hierarchical multi-agent orchestration system** bui
 - **Synthesizer Agent** ([synthesizer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/synthesizer_agent.py)): The core processor that digests extracted source text, identifies concepts, creates/modifies dynamic markdown files in GCS, and defines explicitly typed frontmatter relationships.
 - **Reviewer Agent** ([reviewer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/reviewer_agent.py)): An independent auditor that scans modified knowledge pages, ensures strict schema compliance, cross-checks claims for contradictions, and flags pages as `contested` if conflicts are found.
 - **Librarian Agent** ([librarian_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/librarian_agent.py)): A bookkeeping agent responsible for maintaining catalog files, compiling `index.md`, recording chronological actions in `log.md`, and tracking stub references in `gaps.md`.
+- **Schema Manager Agent** ([schema_manager_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/schema_manager_agent.py)): An administrative agent that checks for pending directory conventions in `schema_proposals.md` and interactively processes them, merging approved definitions into the live `schema.md` governance file.
 
-### Interaction Flow
+### Multi-Agent Topology
 
 ```mermaid
 graph TD
-    User([User]) -->|1. Ingest Request| Orch[Orchestrator Agent]
+    User([User]) -->|1. Ingest / Query Request| Orch[Orchestrator Agent]
     User -->|Browse & Audit| UI[Wiki Web UI]
 
     subgraph multi_agent ["Hierarchical Multi-Agent System"]
@@ -51,12 +52,14 @@ graph TD
         Orch -->|3. Write Content| Synth[Synthesizer Agent]
         Orch -->|4. Verify Factual Integrity| Rev[Reviewer Agent]
         Orch -->|5. Re-Index & Log| Lib[Librarian Agent]
+        Orch -->|6. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
     end
 
     Ext -->|Extract| ExtTools[Extractor Tools]
     Synth -->|Read/Write Pages| GCS[(GCS Wiki Bucket)]
     Rev -->|Factual Audit| GCS
     Lib -->|Maintain Index & Gaps| GCS
+    SchemaMgr -->|Read/Merge Proposals| GCS
     
     UI -->|Fetch Graph/Tree| GCS
 
@@ -65,11 +68,71 @@ graph TD
         index[index.md]
         log[log.md]
         gaps[gaps.md]
+        proposals[schema_proposals.md]
         hierarchy[Dynamic Hierarchical Folders...]
     end
 
     GCS --- gcs_bucket
 ```
+
+### Core Multi-Agent Workflows
+
+#### Ingestion Pipeline
+
+The sequence below illustrates how the Orchestrator coordinates the ingestion of new resources, ensuring uncompromised data extraction, active cross-referencing, validation auditing, and automated directory registration:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant Extractor as Extractor Agent
+    participant Synthesizer as Synthesizer Agent
+    participant Reviewer as Reviewer Agent
+    participant Librarian as Librarian Agent
+    participant GCS as GCS Storage Bucket
+
+    User->>Orchestrator: Ingest Request (Source URL/File)
+    Orchestrator->>Extractor: Extract content
+    Extractor->>Orchestrator: Extracted source text
+    Orchestrator->>Synthesizer: Write wiki pages
+    Synthesizer->>GCS: Read existing pages & write updates
+    Synthesizer->>Orchestrator: Manifest of modified pages
+    Orchestrator->>Reviewer: Verify factual integrity
+    Reviewer->>GCS: Cross-check claims & verify directory schema
+    Reviewer->>Orchestrator: Factual audit & contradiction review report
+    Orchestrator->>Librarian: Re-index & Log
+    Librarian->>GCS: Update index.md, log.md, gaps.md & proposals
+    Librarian->>Orchestrator: Confirmation
+    Orchestrator->>User: Final ingestion summary & health delta
+```
+
+#### Schema Evolution Pipeline
+
+When new domains emerge from digested source documents, the system records proposed directory schemas in `schema_proposals.md`. The Orchestrator manages this schema evolution pipeline interactively via the Schema Manager Agent:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant SchemaMgr as Schema Manager Agent
+    participant GCS as GCS Storage Bucket
+
+    User->>Orchestrator: Schema Manage/Review Request
+    Orchestrator->>SchemaMgr: Check schema proposals
+    SchemaMgr->>GCS: Read schema_proposals.md
+    alt No pending proposals
+        SchemaMgr-->>User: No pending schema proposals found
+    else Pending proposals exist
+        SchemaMgr->>User: Present proposals for interactive approval
+        User->>SchemaMgr: Approve/Reject proposal selections
+        SchemaMgr->>GCS: Merge approved definitions into schema.md
+        SchemaMgr->>GCS: Clear approved entries from schema_proposals.md
+        SchemaMgr-->>User: Merge and update confirmation
+    end
+```
+
 
 ---
 
@@ -121,11 +184,13 @@ agentwiki-adk/
 │   │   ├── extractor_agent.py # Text/file extraction agent
 │   │   ├── synthesizer_agent.py # Wiki composition & GCS editing agent
 │   │   ├── reviewer_agent.py  # Schema & contradiction auditing agent
-│   │   └── librarian_agent.py # Bookkeeping, indexing, & gaps logging agent
+│   │   ├── librarian_agent.py # Bookkeeping, indexing, & gaps logging agent
+│   │   └── schema_manager_agent.py # Automated schema evolution manager agent
 │   └── tools/
 │       ├── __init__.py
 │       ├── gcs_io.py        # Tools for reading/writing to GCS
-│       └── extractor.py     # Tools for content extraction
+│       ├── extractor.py     # Tools for content extraction
+│       └── health.py        # Quantitative wiki health calculation tool
 ├── frontend/                # Next.js Web UI
 │   ├── app/                 # App router pages and API routes
 │   ├── components/          # React components (Graph, Sidebar, etc.)
@@ -135,6 +200,7 @@ agentwiki-adk/
 ├── index.md                 # Initial index (uploaded to GCS)
 ├── log.md                   # Initial log (uploaded to GCS)
 └── README.md                # This file
+
 ```
 
 
