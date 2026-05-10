@@ -3,47 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beyond RAG: The LLM Wiki Pattern</title>
+    <title>Beyond RAG: The Active Knowledge Agent Wiki Pattern</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            line-height: 1.6;
-            color: #1a1a1a;
-            max-width: 800px;
+            line-height: 1.65;
+            color: #1f2937;
+            max-width: 880px;
             margin: 0 auto;
-            padding: 40px 20px;
-            background-color: #fcfcfc;
+            padding: 50px 25px;
+            background-color: #fbfbfb;
         }
         h1 { 
-            font-size: 2.5rem;
-            color: #111;
-            border-bottom: 2px solid #eaeaea;
-            padding-bottom: 15px;
-            margin-bottom: 30px;
+            font-size: 2.6rem;
+            font-weight: 800;
+            color: #111827;
+            border-bottom: 2.5px solid #e5e7eb;
+            padding-bottom: 18px;
+            margin-bottom: 32px;
+            letter-spacing: -0.025em;
+            line-height: 1.2;
         }
         h2 { 
-            font-size: 1.75rem;
-            color: #222;
-            border-bottom: 1px solid #eaeaea;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1f2937;
+            border-bottom: 1px solid #e5e7eb;
             padding-bottom: 8px;
-            margin-top: 40px;
-            margin-bottom: 20px;
+            margin-top: 45px;
+            margin-bottom: 22px;
+            letter-spacing: -0.02em;
         }
         h3 { 
-            font-size: 1.25rem;
-            color: #333;
-            margin-top: 30px;
-            margin-bottom: 15px;
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: #374151;
+            margin-top: 35px;
+            margin-bottom: 18px;
         }
         p {
-            margin-bottom: 20px;
+            margin-bottom: 22px;
+            color: #374151;
         }
         code { 
             background-color: #f3f4f6;
-            padding: 3px 6px;
-            border-radius: 4px;
+            padding: 3px 7px;
+            border-radius: 5px;
             font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
             font-size: 0.9em;
+            color: #111827;
         }
         pre { 
             background-color: #f8f9fa;
@@ -51,50 +59,82 @@
             border-radius: 8px;
             overflow-x: auto;
             border: 1px solid #e5e7eb;
-            margin-bottom: 25px;
+            margin-bottom: 28px;
         }
         pre code { 
             background-color: transparent;
             padding: 0;
-            font-size: 0.85em;
+            font-size: 0.88em;
+            color: #1f2937;
         }
         img { 
             max-width: 100%;
             height: auto;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+            margin: 25px 0;
+            border: 1px solid #e5e7eb;
         }
         ul, ol {
-            margin-bottom: 20px;
-            padding-left: 25px;
+            margin-bottom: 24px;
+            padding-left: 28px;
         }
         li {
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            color: #374151;
+        }
+        strong {
+            color: #111827;
+            font-weight: 650;
         }
         a {
             color: #2563eb;
             text-decoration: none;
+            font-weight: 500;
         }
         a:hover {
             text-decoration: underline;
         }
         blockquote {
-            border-left: 4px solid #e5e7eb;
-            padding-left: 15px;
+            border-left: 4px solid #d1d5db;
+            padding-left: 20px;
             color: #4b5563;
             font-style: italic;
-            margin: 20px 0;
+            margin: 24px 0;
+        }
+        /* Tables styling */
+        table.table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            font-size: 0.95em;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        table.table th, table.table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        table.table th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        table.table tr:hover {
+            background-color: #f9fafb;
         }
     </style>
 </head>
 <body>
-<h1>Beyond RAG: The LLM Wiki Pattern for Compounding Agent Memory</h1>
+
+<h1>Beyond RAG: The Active Knowledge Agent Wiki Pattern for Compounding Agent Memory</h1>
 <h2>The Problem with Traditional RAG</h2>
 <p>Retrieval-Augmented Generation (RAG) has been the go-to pattern for grounding Large Language Models (LLMs) in specific data. While effective, traditional RAG has a fundamental limitation: <strong>it is passive and stateless.</strong></p>
 <p>When a query comes in, the system searches a vector database for relevant chunks, dumps them into the prompt, and the LLM synthesizes an answer from scratch. It doesn't remember what it learned last time. It doesn't connect dots across different queries. It doesn't build a compounding model of the world.</p>
-<h2>The Solution: The LLM Wiki Pattern</h2>
-<p>This project demonstrates a different approach: the <strong>LLM Wiki Pattern</strong>. Instead of relying on a vector database for passive retrieval, the agent actively builds and maintains a structured, interlinked knowledge base (a Wiki) in Google Cloud Storage (GCS).</p>
+<h2>The Solution: The Active Knowledge Agent Wiki Pattern</h2>
+<p>This project demonstrates a different approach: the <strong>Active Knowledge Agent Wiki Pattern</strong>. Instead of relying on a vector database for passive retrieval, the agent actively builds and maintains a structured, interlinked knowledge base (a Wiki) in Google Cloud Storage (GCS).</p>
 <p>Key characteristics of this pattern:</p>
 <ol>
 <li><strong>Active Synthesis</strong>: The agent doesn't just retrieve; it reads, summarizes, and integrates new information into existing pages or creates new ones.</li>
@@ -105,39 +145,46 @@
 </ol>
 <h2>Technical Design</h2>
 <p>The system is built using the <strong>Google Agent Development Kit (ADK)</strong> and leverages the <code>gemini-3-flash-preview</code> model for its reasoning and acting capabilities.</p>
-<h3>Architecture</h3>
-<p>The system consists of four main layers:</p>
+<h3>Hierarchical Multi-Agent Architecture</h3>
+<p>Rather than a single monolithic agent attempting to execute all steps sequentially, the system leverages a <strong>hierarchical multi-agent orchestration topology</strong> built using the Google Agent Development Kit (ADK). A central, highly structured orchestrator delegates specialized operational tasks to autonomous sub-agents:</p>
 <ul>
-<li><strong>Raw Sources</strong>: Immutable files or URLs provided by the user.</li>
-<li><strong>The Wiki</strong>: A dynamic, multi-layered hierarchy of LLM-generated markdown files stored in a GCS bucket.</li>
-<li><strong>The Schema</strong>: A set of rules and conventions (<code>schema.md</code>) that the agent must follow.</li>
-<li><strong>The Web UI</strong>: A Next.js application providing a searchable interface, a tree-view navigation, and an interactive graph view.</li>
+<li><strong>Orchestrator Agent</strong> (<code>agent.py</code>): Coordinates incoming queries, triggers pipeline ingest cycles, delegates specialized subtasks, and compiles final reports.</li>
+<li><strong>Extractor Agent</strong> (<code>extractor_agent.py</code>): Dedicated solely to source document retrieval, safely extracting un-truncated text content from PDFs, text files, and web URLs.</li>
+<li><strong>Synthesizer Agent</strong> (<code>synthesizer_agent.py</code>): The composition engine that ingests source text, extracts structural entities and tags, and generates or modifies dynamic markdown files in GCS with typed relationships.</li>
+<li><strong>Reviewer Agent</strong> (<code>reviewer_agent.py</code>): The quality auditor. It parses newly written files to check for schema compliance, cross-checks claims against the whole wiki for contradictions, and creates stubs for knowledge gaps.</li>
+<li><strong>Librarian Agent</strong> (<code>librarian_agent.py</code>): The bookkeeper. It updates the navigational index <code>index.md</code>, records chronological changes in <code>log.md</code>, and notes unresolved stubs in <code>gaps.md</code>.</li>
+<li><strong>Schema Manager Agent</strong> (<code>schema_manager_agent.py</code>): <strong>Conditional Execution</strong>. This administrative agent runs only when pending directory schema revisions are logged in <code>schema_proposals.md</code>. It presents the suggested extensions and interactively updates the global <code>schema.md</code> file.</li>
 </ul>
-<h3>System Interaction Flow</h3>
-<p>Here is how the components interact:</p>
-<div style="text-align: center; margin: 20px 0;"><img src="diagrams/diagram1.png" alt="Diagram 1"/></div>
-<h3>Agent Internal Architecture</h3>
-<p>While the diagram above shows the system-level interaction, the agent itself is a sophisticated component built with the Google ADK. Here is a look inside the agent:</p>
-<div style="text-align: center; margin: 20px 0;"><img src="diagrams/diagram2.png" alt="Diagram 2"/></div>
-<h3>Key Workflows</h3>
+<h3>Multi-Agent Topology</h3>
+<p><div style="text-align: center; margin: 30px 0;"><img src="diagrams/diagram1.png" alt="Active Knowledge Agent Wiki Flowchart 1" /></div></p>
+<h3>Core System Workflows</h3>
+<h4>Ingestion Pipeline</h4>
+<p>When a resource (file, URL, or raw text) is added to the wiki, the Orchestrator executes an automated, multi-stage pipeline:</p>
+<p><div style="text-align: center; margin: 30px 0;"><img src="diagrams/diagram2.png" alt="Active Knowledge Agent Wiki Flowchart 2" /></div></p>
+<h4>Schema Evolution Pipeline</h4>
+<p>To accommodate new knowledge domains without manual intervention, the orchestrator runs an interactive schema evolution workflow. The <code>SchemaManagerAgent</code> acts conditionally, executing only when there are proposals to process:</p>
+<p><div style="text-align: center; margin: 30px 0;"><img src="diagrams/diagram3.png" alt="Active Knowledge Agent Wiki Flowchart 3" /></div></p>
 <ul>
-<li><strong>Ingestion</strong>: When new content is provided, the agent extracts the text, creates a summary in the <code>sources/</code> directory, identifies key entities, concepts, and protocols (like MCP), and places them in a logically determined hierarchical directory. It also identifies explicit relationships and tags, updates the <code>index.md</code>, and logs the action.</li>
-<li><strong>Querying</strong>: To answer a question, the agent consults <code>index.md</code> to locate relevant pages, reads them, and synthesizes a response, citing the sources.</li>
+<li>  <strong>Ingestion</strong>: When new content is provided, the agent extracts the text, creates a summary in the <code>sources/</code> directory, identifies key entities, concepts, and protocols (like MCP), and places them in a logically determined hierarchical directory. It also identifies explicit relationships and tags, updates the <code>index.md</code>, and logs the action.</li>
+<li>  <strong>Querying</strong>: To answer a question, the agent consults <code>index.md</code> to locate relevant pages, reads them, and synthesizes a response, citing the sources.</li>
 </ul>
 <h2>Rich Visualization and Discovery</h2>
 <p>To make this compounding memory accessible to humans, the project includes a custom Web UI:</p>
 <ol>
-<li><strong>Tree-View Sidebar</strong>: Dynamically generates a navigation tree supporting arbitrary depth, making it easy to explore the hierarchical structure.</li>
-<li><strong>Interactive Graph View</strong>: Visualizes nodes (files and tags) and links (general links and explicit relationships).
-<ul>
-<li><strong>Tag Clustering</strong>: Files cluster around shared tag nodes, revealing common topics.</li>
-<li><strong>Relationship Highlighting</strong>: Explicit relationships are rendered in distinct colors with directionality.</li>
-</ul>
-</li>
-<li><strong>Perspective Rendering</strong>: Clicking a node filters the graph to show only that node and its immediate neighbors, allowing you to focus on specific contexts.</li>
+<li><strong>Tree-View Sidebar</strong>: Dynamically generates a navigation tree supporting arbitrary depth, making it easy to explore the dynamic hierarchical folder structure.</li>
+<li><strong>Interactive Force-Directed Graph View</strong>: Visualizes files, concepts, and tags as nodes, and links them via direct references and explicit frontmatter relationships.</li>
+</ol>
+<p><em>   <strong>Tag Clustering</strong>: Files cluster around shared tag nodes, instantly revealing common knowledge areas.</p>
+<p></em>   <strong>Ontological Line Coloration</strong>: Explicit relationships are colored according to their semantic type (e.g. <code>regulated_by</code>, <code>contradicts</code>), illustrating the direction of knowledge flow.</p>
+<ol>
+<li><strong>Perspective Rendering</strong>: Clicking any node instantly filters the graph to focus solely on that node and its immediate first-degree neighbors, keeping complex systems clean and readable.</li>
+<li><strong>Ontology State Badges</strong>: Pages display visual status badges indicating whether a page is <code>ACTIVE</code> (verified), <code>STUB</code> (empty placeholder referencing knowledge gaps), or <code>CONTESTED</code> (flagged for factual contradictions).</li>
+<li><strong>Dynamic Confidence circular gauges</strong>: High-fidelity circular progress meters render the Synthesizer's confidence scores directly within the document header.</li>
+<li><strong>Contested Warning Banners</strong>: A prominent warning block is rendered at the top of any contested page, alerting human editors to audit contradictory claims.</li>
+<li><strong>Relationship and References Inspector</strong>: Renders tables of incoming/outgoing typed relationships next to the document text, allowing immediate human navigation.</li>
 </ol>
 <p><img src="./frontend_screenshot.png" alt="Knowledge Agent Wiki Frontend" /></p>
-<h2>The LLM Wiki Pattern vs. Traditional RAG</h2>
+<h2>The Active Knowledge Agent Wiki Pattern vs. Traditional RAG</h2>
 <p>To fully appreciate the benefits of this approach, let's compare it directly with traditional Retrieval-Augmented Generation (RAG).</p>
 <h3>Traditional RAG: Passive and Stateless</h3>
 <p>In a standard RAG setup:</p>
@@ -147,27 +194,46 @@
 <li><strong>Generation</strong>: The LLM reads the chunks and generates an answer.</li>
 </ol>
 <p><strong>Limitations:</strong></p>
-<ul>
-<li><strong>Lack of Synthesis</strong>: The system never synthesizes the chunks into a coherent whole <em>before</em> query time.</li>
-<li><strong>No Cross-Referencing</strong>: It struggles to connect dots across different documents unless they happen to be retrieved together.</li>
-<li><strong>Hallucination Risk</strong>: Vector search can retrieve superficially similar but contextually irrelevant chunks, leading to hallucinated answers.</li>
-</ul>
-<h3>The LLM Wiki Pattern: Active and Stateful</h3>
-<p>The LLM Wiki pattern flips this model by having the agent actively manage a structured knowledge base.</p>
+<p><em>   <strong>Lack of Synthesis</strong>: The system never synthesizes the chunks into a coherent whole </em>before<em> query time.</p>
+<p></em>   <strong>No Cross-Referencing</strong>: It struggles to connect dots across different documents unless they happen to be retrieved together.</p>
+<p><em>   <strong>Hallucination Risk</strong>: Vector search can retrieve superficially similar but contextually irrelevant chunks, leading to hallucinated answers.</p>
+<h3>The Active Knowledge Agent Wiki Pattern: Active and Stateful</h3>
+<p>The Active Knowledge Agent Wiki pattern flips this model by having the agent actively manage a structured knowledge base.</p>
 <p><strong>Key Benefits Over RAG:</strong></p>
 <ol>
-<li><strong>Compounding Intelligence (Stateful Memory)</strong>: Instead of answering every query from raw chunks, the agent reads new information and <em>integrates</em> it into existing knowledge. The wiki becomes smarter over time, just like a human brain or a well-maintained corporate wiki.</li>
+<li><strong>Compounding Intelligence (Stateful Memory)</strong>: Instead of answering every query from raw chunks, the agent reads new information and </em>integrates<em> it into existing knowledge. The wiki becomes smarter over time, just like a human brain or a well-maintained corporate wiki.</li>
 <li><strong>High-Fidelity Relationships</strong>: By using explicit frontmatter relationships and tags, the system creates a high-precision Knowledge Graph. RAG relies on fuzzy semantic similarity; the Wiki pattern uses hard, semantic links created by the LLM itself.</li>
 <li><strong>Reduced Noise and High Precision</strong>: Guided by a central <code>index.md</code> and strict schemas, the agent knows exactly where to find information. It doesn't get confused by similar-sounding but unrelated chunks of text.</li>
-<li><strong>Human Auditable and Editable</strong>: Traditional RAG stores data in a complex, binary vector database that humans cannot read or easily fix. The LLM Wiki consists of plain markdown files in GCS. A human expert can read them, spot errors, and edit them directly to correct the agent's memory.</li>
+<li><strong>Human Auditable and Editable</strong>: Traditional RAG stores data in a complex, binary vector database that humans cannot read or easily fix. The Active Knowledge Agent Wiki consists of plain markdown files in GCS. A human expert can read them, spot errors, and edit them directly to correct the agent's memory.</li>
 <li><strong>Zero Vector Infrastructure</strong>: You don't need to manage a vector database, handle embedding models, or tune chunk sizes and overlap parameters. This significantly reduces infrastructure cost and complexity.</li>
 </ol>
-<h2>Why This Is So Important</h2>
-<p>The LLM Wiki pattern represents a step towards more autonomous and capable AI agents.</p>
+<hr />
+<h2>Unique and Powerful Implementation Features</h2>
+<p>This multi-agent implementation introduces several cutting-edge features that elevate it far beyond a simple file-writer:</p>
+<h3>🛡️ 1. Double-Verifier Claim Pipeline</h3>
+<p>When new content is ingested, the <strong>Synthesizer Agent</strong> writes updates with a calculated confidence score. However, before these changes are committed, the independent <strong>Reviewer Agent</strong> acts as a strict auditor. It cross-checks every claim against the entire existing wiki. If it detects a logical or factual mismatch, it does not crash; instead, it flags the file as <code>contested: true</code> and alerts the user, providing a highly resilient system that handles contradictory data gracefully.</p>
+<h3>🧬 2. Decentralized Schema Evolution</h3>
+<p>Rather than being bound to a static directory structure, this wiki evolves organically. When the Librarian Agent identifies new concepts, it proposes new structural pathways in <code>schema_proposals.md</code>. The administrative <strong>Schema Manager Agent</strong> executes <strong>conditionally</strong>—spinning up only when proposals are pending—to allow users to review, select, and automatically merge new directories into the global <code>schema.md</code> conventions.</p>
+<h3>🩺 3. Real-Time Quantitative Health Auditing</h3>
+<p>The system features an automated health checking utility (<code>health.py</code>) that scans the repository to calculate an overall <strong>Health Score (0.0 to 1.0)</strong>. This weighted scoring function balances:</p>
+<p></em>   <strong>40% Volume of completed pages</strong> vs. empty placeholder stubs.</p>
+<p><em>   <strong>40% Average confidence scores</strong> of claims.</p>
+<p></em>   <strong>20% Ratio of contested conflicts</strong> in the wiki.</p>
+<p>This provides a clear, actionable metric of knowledge base fidelity.</p>
+<h3>🌐 4. Adaptive Metadata-Guided Interface</h3>
+<p>The Obsidian-like Next.js Web UI is fully integrated with this rich metadata layer.</p>
+<p><em>   <strong>Circle Gauges</strong>: Render high-fidelity confidence levels next to claims.</p>
+<p></em>   <strong>Factual Alerts</strong>: Dynamic warning boxes instantly alert users at the top of any contested page.</p>
 <ul>
-<li><strong>From Retrieval to Knowledge Management</strong>: It shifts the paradigm from passive retrieval to active knowledge management. The agent is not just a search engine; it is a researcher and a librarian.</li>
-<li><strong>Enabling Continuous Learning</strong>: It provides a concrete mechanism for agents to accumulate knowledge over time, overcoming the context window limitations of individual sessions.</li>
-<li><strong>Foundation for Complex Reasoning</strong>: A structured, interlinked knowledge base is a much better foundation for complex, multi-step reasoning than a pile of disconnected document chunks.</li>
+<li>  <strong>Ontology Coloration</strong>: Force graph links are styled directionally according to relationship types (e.g., <code>regulated_by</code>, <code>contradicts</code>), offering instant ontology mapping.</li>
+</ul>
+<hr />
+<h2>Why This Is So Important</h2>
+<p>The Active Knowledge Agent Wiki pattern represents a step towards more autonomous and capable AI agents.</p>
+<ul>
+<li>  <strong>From Retrieval to Knowledge Management</strong>: It shifts the paradigm from passive retrieval to active knowledge management. The agent is not just a search engine; it is a researcher and a librarian.</li>
+<li>  <strong>Enabling Continuous Learning</strong>: It provides a concrete mechanism for agents to accumulate knowledge over time, overcoming the context window limitations of individual sessions.</li>
+<li>  <strong>Foundation for Complex Reasoning</strong>: A structured, interlinked knowledge base is a much better foundation for complex, multi-step reasoning than a pile of disconnected document chunks.</li>
 </ul>
 <p>This project shows that with the right scaffolding and tools, LLMs can be empowered to manage their own knowledge, leading to more intelligent and reliable behavior.</p>
 

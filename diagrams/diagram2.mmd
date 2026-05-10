@@ -1,25 +1,23 @@
-graph LR
-    subgraph Agent [LLM Wiki Agent]
-        direction TB
-        Core[Agent Core / Instructions]
-        Model[Gemini 3 Flash Preview]
-        
-        subgraph Toolset [ADK Tools]
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant Extractor as Extractor Agent
+    participant Synthesizer as Synthesizer Agent
+    participant Reviewer as Reviewer Agent
+    participant Librarian as Librarian Agent
+    participant GCS as GCS Storage Bucket
 
-            direction LR
-            T1[read_wiki_file]
-            T2[write_wiki_file]
-            T3[list_wiki_files]
-            T4[wiki_file_exists]
-            T5[extract_from_url]
-            T6[extract_from_file]
-            T7[get_current_date_time]
-        end
-        
-        Core <--> Model
-        Core --> Toolset
-    end
-    
-    User -->|Query / Ingest| Core
-    Toolset -->|Read/Write| GCS[(GCS Bucket)]
-    Toolset -->|Fetch/Extract| External[Web / Local Files]
+    User->>Orchestrator: Ingest Request (Source URL/File)
+    Orchestrator->>Extractor: Extract content
+    Extractor->>Orchestrator: Extracted source text
+    Orchestrator->>Synthesizer: Write wiki pages
+    Synthesizer->>GCS: Read existing pages & write updates
+    Synthesizer->>Orchestrator: Manifest of modified pages
+    Orchestrator->>Reviewer: Verify factual integrity
+    Reviewer->>GCS: Cross-check claims & verify directory schema
+    Reviewer->>Orchestrator: Factual audit & contradiction review report
+    Orchestrator->>Librarian: Re-index & Log
+    Librarian->>GCS: Update index.md, log.md, gaps.md & proposals
+    Librarian->>Orchestrator: Confirmation
+    Orchestrator->>User: Final ingestion summary & health delta

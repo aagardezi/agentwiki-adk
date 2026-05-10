@@ -1,131 +1,76 @@
 # ruff: noqa
-
-import datetime
-import os
-from dataclasses import dataclass
-from zoneinfo import ZoneInfo
-
-
-def load_local_env():
-    """Loads environment variables from a local .env file if it exists in the project root."""
-    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-    if os.path.exists(env_path):
-        with open(env_path) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key, val = line.split("=", 1)
-                    os.environ.setdefault(key.strip(), val.strip())
-
-
-load_local_env()
-
-import google.auth
-from google import genai
 from google.adk.agents import Agent
 from google.adk.apps import App
-from google.adk.models import Gemini, google_llm
-from google.genai import types
+from google.adk.tools import agent_tool
 
+from app.agents.extractor_agent import extractor_agent
+from app.agents.librarian_agent import librarian_agent
+from app.agents.reviewer_agent import reviewer_agent
+from app.agents.schema_manager_agent import schema_manager_agent
+from app.agents.synthesizer_agent import synthesizer_agent
+from app.config import WIKI_BUCKET_NAME, get_current_date_time, make_model
+from app.tools.gcs_io import list_wiki_files, read_wiki_file
+from app.tools.health import compute_wiki_health
 
-from app.tools.gcs_io import (
-    read_wiki_file,
-    write_wiki_file,
-    list_wiki_files,
-    wiki_file_exists,
-)
-from app.tools.extractor import extract_from_url, extract_from_file
+instruction = f"""You are the Wiki Orchestrator. You coordinate a team of specialized agents to build and maintain a persistent knowledge base in GCS bucket `{WIKI_BUCKET_NAME}`.
 
-WIKI_BUCKET_NAME = os.environ.get("WIKI_BUCKET_NAME", "YOUR_WIKI_BUCKET_NAME")
+## Your Team
 
+- **extractor_agent**: Fetches and extracts raw content from URLs, files, or conversation context.
+- **synthesizer_agent**: Integrates extracted content into the wiki with confidence scoring and typed relationships. Returns a manifest of files written.
+- **reviewer_agent**: Validates consistency, detects contradictions, and creates stub pages for knowledge gaps. Returns a review report.
+- **librarian_agent**: Updates `index.md`, `log.md`, and proposes schema changes when new domains emerge.
+- **schema_manager_agent**: Checks for pending schema proposals and, if any exist, presents them to the user and merges approved ones into `schema.md`.
 
-@dataclass
-class ResearchConfiguration:
-    gemini_flash_model: str = "gemini-2.5-flash"
-    gemini_pro_model: str = "gemini-2.5-pro"
-    gemini_model: str = "gemini-3-flash-preview"
-    gemini31_model: str = "gemini-3.1-pro-preview"
-    gemini_3_pro_model: str = "gemini-3-pro-preview"
+## Operations
 
+### Ingest
+When given a URL, file path, or document content to add to the wiki:
+1. Call `extractor_agent` with the source. If it returns an error, stop immediately and report it to the user — do not proceed.
+2. Call `synthesizer_agent` with the extracted content and source metadata. Capture the file manifest it returns.
+3. Call `reviewer_agent` with the synthesizer's manifest. Capture the review report.
+4. Call `librarian_agent` with a full summary: source ingested, synthesizer manifest, and reviewer report.
+5. Report back to the user with: pages created/updated, stubs identified, any contradictions found, and the health impact.
 
-config = ResearchConfiguration()
+### Query
+When answering a question about the wiki:
+1. Call `read_wiki_file('index.md')` to locate relevant pages.
+2. Read those pages with `read_wiki_file`.
+3. Synthesize a grounded answer, citing the pages used.
+4. Do not use external search unless explicitly instructed by the user.
 
+### Lint / Health Check
+When asked to lint, health-check, or audit the wiki:
+1. Call `compute_wiki_health` for a quantitative snapshot.
+2. Call `reviewer_agent` to perform a full consistency check across the wiki.
+3. Call `librarian_agent` to log the lint results.
+4. Return the health report plus a summary of issues found.
 
-def get_project_id():
-    _, project_id = google.auth.default()
-    return project_id
+### Schema Management
+When the user asks to review, merge, or apply schema proposals:
+1. Call `schema_manager_agent`. It will check `schema_proposals.md` automatically.
+2. If proposals exist, it will present them to the user and handle the merge interactively.
+3. If no proposals exist, it will report that nothing is pending.
 
+### Health Report Only
+When asked just for a health score or quick stats, call `compute_wiki_health` and return the result directly.
 
-api_client = genai.Client(vertexai=True, project=get_project_id(), location="global")
-
-model = google_llm.Gemini(
-    model=config.gemini_model,
-    retry_options=types.HttpRetryOptions(attempts=3),
-)
-
-model.api_client = api_client
-
-
-def get_current_date_time() -> str:
-    """Returns the current date and time in ISO format.
-    Use this tool to get the correct date and time for logging and frontmatter.
-    """
-    return datetime.datetime.now().isoformat()
-
-
-instruction = f"""You are the LLM Wiki Agent. Your goal is to build and maintain a persistent knowledge base (wiki) in GCS, following the rules defined in `schema.md`.
-
-You have access to tools to read and write files in the wiki bucket (`{WIKI_BUCKET_NAME}`) and to extract content from URLs and files.
-You also have a tool to get the current date and time, which you MUST use for logging and setting timestamps in file frontmatter.
-
-Your core operations are:
-1. **Ingest**: When given a URL or file path, you MUST execute the following precise steps in order:
-   - **Step 1: Read Schema**: First, call `read_wiki_file('schema.md')` to read the structure, rules, and folder conventions of the wiki.
-   - **Step 2: Check Conversation History / Extract Content**: 
-     * First, check if the document's full content has already been provided to you directly in the conversation history (for example, if the user uploaded the file or PDF using the chat UI, which is passed directly to you as a message part). If the content is already available in your prompt history, you DO NOT need to call `extract_from_file`. Simply read and use the content directly from your context, and proceed to **Step 4**.
-     * Otherwise, call the appropriate extraction tool (`extract_from_file` or `extract_from_url`) to obtain the document content.
-   - **Step 3: Check for Failures**: If you had to call an extraction tool in Step 2, inspect the result returned. If the result indicates a failure (e.g., starts with "File not found:", "Error fetching URL:", "Error extracting from URL:", or "Error extracting from file:"), you MUST immediately STOP. Do NOT write any files, do NOT update the index or logs, and do NOT attempt to guess, assume, or hallucinate the content of the document based on its filename, title, user prompt, or general context. Immediately report the failure back to the user with the exact error message.
-   - **Step 4: Integrate into Wiki**: Summarize the extracted/provided content and integrate it into the wiki following the conventions in `schema.md`. You MUST be thorough in identifying all key entities, concepts, technologies, and protocols. Ensure that concrete implementations go into `agents/implementations/` and new technologies/protocols go into appropriate subdirectories under `technology/`. Refer to `schema.md` for detailed workflows.
-2. **Query**: Answer questions by reading the wiki content, guided by `index.md`. Do not use external search unless instructed.
-3. **Lint**: Check the wiki for consistency and health.
-
-
-
-**CRITICAL FOR GRAPH VISUALIZATION**: When creating or updating pages, you MUST actively look for opportunities to link to other existing pages across all directories. 
-- Before creating a new page, check `index.md` or use `list_wiki_files` to see what already exists.
-- Use relative markdown links to connect related pages. Note that paths may need multiple `../` depending on the depth of the directories you create.
-- **New Feature**: You must also add explicit, typed relationships in the YAML frontmatter under the `relationships` key when you identify specific domain connections.
-  Example format:
-  ```yaml
-  relationships:
-    - target: "agents/frameworks/google-adk-framework.md"
-      type: "uses"
-    - target: "compliance/regulators/fca.md"
-      type: "regulated_by"
-  ```
-  The target must be a valid relative path from the bucket root. This supercharges the graph visualization.
-
-- **Tags**: Always add relevant tags to the `tags` list in the frontmatter to enable filtering by topic in the UI.
-- A rich network of inter-links, explicit relationships, and tags is essential for the wiki to be useful. Do not just create isolated descriptions.
-
-
-
-
-
-Always refer to `schema.md` (which you can read using `read_wiki_file('schema.md')`) for specific structure and conventions. Source traceability is critical.
+Always use `get_current_date_time` for any timestamps you include in responses.
 """
 
 root_agent = Agent(
-    name="wiki_agent",
-    model=model,
+    name="wiki_orchestrator",
+    model=make_model(),
     instruction=instruction,
     tools=[
+        agent_tool.AgentTool(agent=extractor_agent),
+        agent_tool.AgentTool(agent=synthesizer_agent),
+        agent_tool.AgentTool(agent=reviewer_agent),
+        agent_tool.AgentTool(agent=librarian_agent),
+        agent_tool.AgentTool(agent=schema_manager_agent),
         read_wiki_file,
-        write_wiki_file,
         list_wiki_files,
-        wiki_file_exists,
-        extract_from_url,
-        extract_from_file,
+        compute_wiki_health,
         get_current_date_time,
     ],
 )

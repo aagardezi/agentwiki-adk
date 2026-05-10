@@ -10,6 +10,8 @@ Special files at the root:
 - `index.md`: Content-oriented catalog of all pages.
 - `log.md`: Chronological record of operations.
 - `schema.md`: This file.
+- `gaps.md`: Auto-maintained list of stub pages (knowledge gaps detected during ingest).
+- `schema_proposals.md`: Proposals for schema evolution filed by the Librarian Agent.
 - `sources/`: Directory for summaries of raw sources (keep flat).
 
 Example of a logical hierarchy (the agent is encouraged to create new branches as needed):
@@ -30,7 +32,7 @@ Example of a logical hierarchy (the agent is encouraged to create new branches a
 
 ## Page Format
 
-All markdown files in the wiki (except special files like `index.md` and `log.md`) MUST have YAML frontmatter at the top.
+All markdown files in the wiki (except special files like `index.md`, `log.md`, `gaps.md`, and `schema_proposals.md`) MUST have YAML frontmatter at the top.
 
 Example:
 ```markdown
@@ -40,17 +42,55 @@ created_at: 2026-05-07
 updated_at: 2026-05-07
 sources: [source_id_1, source_id_2]
 tags: [tag1, tag2]
+status: active          # active | stub | contested
+confidence: 0.85        # 0.0–1.0, see Confidence Scoring below
+evidence_count: 2       # number of independent sources supporting this page
+contested: false        # true if a contradiction has been detected
 relationships:
   - target: "concepts/concept_name.md"
     type: "relates_to"
+    description: "Both address the same regulatory domain"
   - target: "entities/entity_name.md"
     type: "regulated_by"
+    description: "Subject to oversight by this regulator"
 ---
 
 # Content
 
 Content goes here...
 ```
+
+## Relationship Type Ontology
+
+All `relationships` entries MUST use one of the following controlled types. Using an undefined type is a schema violation.
+
+| Type | Meaning |
+|------|---------|
+| `implements` | Concrete realization of an abstract concept or specification |
+| `extends` | Builds upon and adds to another concept or system |
+| `regulated_by` | Subject to governance or oversight by |
+| `contradicts` | Contains claims that conflict with another page |
+| `supersedes` | Replaces or deprecates a prior version or approach |
+| `uses` | Depends on or employs another technology or concept |
+| `relates_to` | General conceptual connection (use sparingly — prefer specific types) |
+| `part_of` | A component or subset of a larger whole |
+
+Each relationship entry must include a `description` field explaining why the relationship exists.
+
+## Confidence Scoring
+
+Every knowledge page MUST include a `confidence` score (0.0–1.0) reflecting the reliability of its claims.
+
+| Range | Meaning |
+|-------|---------|
+| 0.9–1.0 | Official documentation, primary standards, peer-reviewed sources |
+| 0.7–0.9 | Reputable secondary sources, established industry publications |
+| 0.5–0.7 | Blogs, third-party write-ups, single unverified accounts |
+| 0.0–0.5 | Speculative, conflicting, or stub content |
+
+- `evidence_count` increments each time an independent source corroborates this page's claims.
+- `contested: true` is set automatically by the Reviewer Agent when a contradiction is detected. Revert to `false` only after the contradiction is resolved and documented.
+- Stub pages always start with `confidence: 0.0` and `status: stub`.
 
 ## Conventions
 

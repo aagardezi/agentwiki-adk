@@ -1,0 +1,19 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant SchemaMgr as Schema Manager Agent
+    participant GCS as GCS Storage Bucket
+
+    User->>Orchestrator: Schema Manage/Review Request
+    Orchestrator->>SchemaMgr: Check schema proposals
+    SchemaMgr->>GCS: Read schema_proposals.md
+    alt No pending proposals
+        SchemaMgr-->>User: No pending schema proposals found
+    else Pending proposals exist
+        SchemaMgr->>User: Present proposals for interactive approval
+        User->>SchemaMgr: Approve/Reject proposal selections
+        SchemaMgr->>GCS: Merge approved definitions into schema.md
+        SchemaMgr->>GCS: Clear approved entries from schema_proposals.md
+        SchemaMgr-->>User: Merge and update confirmation
+    end

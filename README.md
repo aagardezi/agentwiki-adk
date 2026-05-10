@@ -1,6 +1,6 @@
-# LLM Wiki Agent
+# Active Knowledge Agent Wiki
 
-This project implements an ADK-based agent that builds and maintains a persistent knowledge base (wiki) in Google Cloud Storage (GCS), following the "LLM Wiki" pattern. It avoids traditional RAG (Retrieval-Augmented Generation) and vector search, relying instead on the LLM to actively synthesize and organize knowledge into interlinked markdown files, guided by an index. It also features a rich Web UI with an interactive graph view.
+This project implements an ADK-based agent that builds and maintains a persistent knowledge base (wiki) in Google Cloud Storage (GCS), following the "Active Knowledge Agent Wiki" pattern. It avoids traditional RAG (Retrieval-Augmented Generation) and vector search, relying instead on the LLM to actively synthesize and organize knowledge into interlinked markdown files, guided by an index. It also features a rich Web UI with an interactive graph view.
 
 ## Core Concept
 
@@ -29,56 +29,121 @@ The system consists of four main layers:
 
 
 
-### Agent Design
+### Multi-Agent Architecture Design
 
-The agent is built using the Google Agent Development Kit (ADK) and uses the `gemini-3-flash-preview` model. It operates in a ReAct (Reasoning + Acting) loop, using the following tools:
+The system is powered by a **hierarchical multi-agent orchestration system** built on top of the Google Agent Development Kit (ADK). Rather than a single agent attempting to execute all reasoning, verification, and compilation steps sequentially, tasks are delegated to specialized, autonomous sub-agents collaborating through a central orchestrator.
 
+- **Orchestrator Agent** ([agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agent.py)): The root agent that receives input, initializes the workflow pipeline, coordinates sub-agent tasks, and returns progress reports to the user.
+- **Extractor Agent** ([extractor_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/extractor_agent.py)): A single-responsibility agent equipped with extraction tools that retrieves full, un-truncated text from provided files, PDFs, and URLs.
+- **Synthesizer Agent** ([synthesizer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/synthesizer_agent.py)): The core processor that digests extracted source text, identifies concepts, creates/modifies dynamic markdown files in GCS, and defines explicitly typed frontmatter relationships.
+- **Reviewer Agent** ([reviewer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/reviewer_agent.py)): An independent auditor that scans modified knowledge pages, ensures strict schema compliance, cross-checks claims for contradictions, and flags pages as `contested` if conflicts are found.
+- **Librarian Agent** ([librarian_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/librarian_agent.py)): A bookkeeping agent responsible for maintaining catalog files, compiling `index.md`, recording chronological actions in `log.md`, and tracking stub references in `gaps.md`.
+- **Schema Manager Agent** ([schema_manager_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/schema_manager_agent.py)): An administrative agent that checks for pending directory conventions in `schema_proposals.md` and interactively processes them, merging approved definitions into the live `schema.md` governance file.
 
--   **GCS IO Tools**: Read, write, and list files in the GCS wiki bucket.
--   **Extractor Tools**: Extract text content from URLs and files (including PDFs).
-
-### Interaction Flow
+### Multi-Agent Topology
 
 ```mermaid
 graph TD
-    User([User]) -->|Query/Ingest| Agent[LLM Wiki Agent]
-    User -->|Browse/Visualize| UI[Wiki Web UI]
-    Agent -->|Read/Write| GCS[(GCS Wiki Bucket)]
-    UI -->|Read/Generate Graph| GCS
-    Agent -->|Extract Content| Ext[Extractor Tools]
-    Ext -->|Fetch| Web[External URL]
-    Ext -->|Read| File[Local File]
+    User([User]) -->|1. Ingest / Query Request| Orch[Orchestrator Agent]
+    User -->|Browse & Audit| UI[Wiki Web UI]
+
+    subgraph multi_agent ["Hierarchical Multi-Agent System"]
+        Orch -->|2. Extract Source| Ext[Extractor Agent]
+        Orch -->|3. Write Content| Synth[Synthesizer Agent]
+        Orch -->|4. Verify Factual Integrity| Rev[Reviewer Agent]
+        Orch -->|5. Re-Index & Log| Lib[Librarian Agent]
+        Orch -->|6. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
+    end
+
+    Ext -->|Extract| ExtTools[Extractor Tools]
+    Synth -->|Read/Write Pages| GCS[(GCS Wiki Bucket)]
+    Rev -->|Factual Audit| GCS
+    Lib -->|Maintain Index & Gaps| GCS
+    SchemaMgr -->|Read/Merge Proposals| GCS
     
-    subgraph gcs_bucket ["GCS Bucket"]
+    UI -->|Fetch Graph/Tree| GCS
+
+    subgraph gcs_bucket ["GCS Bucket Layout"]
         schema[schema.md]
         index[index.md]
         log[log.md]
-        folders[Hierarchical Folders...]
-        sources[sources/]
+        gaps[gaps.md]
+        proposals[schema_proposals.md]
+        hierarchy[Dynamic Hierarchical Folders...]
     end
-    
-    Agent -.->|Follows Rules| schema
-    Agent -.->|Navigates via| index
-    Agent -.->|Logs Actions to| log
-    
-    subgraph kg_features ["Knowledge Graph Features"]
-        Tags[Tags]
-        Rels[Explicit Relationships]
-    end
-    
-    UI -.->|Visualizes| kg_features
+
+    GCS --- gcs_bucket
 ```
+
+### Core Multi-Agent Workflows
+
+#### Ingestion Pipeline
+
+The sequence below illustrates how the Orchestrator coordinates the ingestion of new resources, ensuring uncompromised data extraction, active cross-referencing, validation auditing, and automated directory registration:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant Extractor as Extractor Agent
+    participant Synthesizer as Synthesizer Agent
+    participant Reviewer as Reviewer Agent
+    participant Librarian as Librarian Agent
+    participant GCS as GCS Storage Bucket
+
+    User->>Orchestrator: Ingest Request (Source URL/File)
+    Orchestrator->>Extractor: Extract content
+    Extractor->>Orchestrator: Extracted source text
+    Orchestrator->>Synthesizer: Write wiki pages
+    Synthesizer->>GCS: Read existing pages & write updates
+    Synthesizer->>Orchestrator: Manifest of modified pages
+    Orchestrator->>Reviewer: Verify factual integrity
+    Reviewer->>GCS: Cross-check claims & verify directory schema
+    Reviewer->>Orchestrator: Factual audit & contradiction review report
+    Orchestrator->>Librarian: Re-index & Log
+    Librarian->>GCS: Update index.md, log.md, gaps.md & proposals
+    Librarian->>Orchestrator: Confirmation
+    Orchestrator->>User: Final ingestion summary & health delta
+```
+
+#### Schema Evolution Pipeline
+
+When new domains emerge from digested source documents, the system records proposed directory schemas in `schema_proposals.md`. The Orchestrator manages this schema evolution pipeline interactively via the Schema Manager Agent:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Orchestrator as Orchestrator Agent
+    participant SchemaMgr as Schema Manager Agent
+    participant GCS as GCS Storage Bucket
+
+    User->>Orchestrator: Schema Manage/Review Request
+    Orchestrator->>SchemaMgr: Check schema proposals
+    SchemaMgr->>GCS: Read schema_proposals.md
+    alt No pending proposals
+        SchemaMgr-->>User: No pending schema proposals found
+    else Pending proposals exist
+        SchemaMgr->>User: Present proposals for interactive approval
+        User->>SchemaMgr: Approve/Reject proposal selections
+        SchemaMgr->>GCS: Merge approved definitions into schema.md
+        SchemaMgr->>GCS: Clear approved entries from schema_proposals.md
+        SchemaMgr-->>User: Merge and update confirmation
+    end
+```
+
 
 ---
 
-## The LLM Wiki Pattern vs. Traditional RAG
+## The Active Knowledge Agent Wiki Pattern vs. Traditional RAG
 
 To fully appreciate the benefits of this active, compounding knowledge base, it is helpful to compare it directly with traditional Retrieval-Augmented Generation (RAG).
 
-| Feature | Traditional RAG | LLM Wiki Pattern |
+| Feature | Traditional RAG | Active Knowledge Agent Wiki Pattern |
 | :--- | :--- | :--- |
 | **State & Memory** | **Stateless**. Retrieves chunks on-the-fly for each query. Forgets what it synthesized last time. | **Stateful**. Actively integrates new information into an evolving, structured knowledge base. |
-| **Precision & Links** | **Fuzzy Similarity**. Relies on vector distance, which can retrieve out-of-context or irrelevant text. | **High-Precision Graph**. Uses hard, semantic relationships (`regulated_by`, `related_to`) and tags defined by the LLM in page frontmatter. |
+| **Precision & Links** | **Fuzzy Similarity**. Relies on vector distance, which can retrieve out-of-context or irrelevant text. | **High-Precision Graph**. Uses hard, semantic relationships (`regulated_by`, `contradicts`) and tags defined by the LLM in page frontmatter. |
 | **Auditability** | **Black Box**. Vector store contains binary embeddings. Extremely difficult for humans to audit or manually correct. | **Transparent**. Made of clean, human-readable Markdown files in GCS. Humans can directly read and edit the agent's memory. |
 | **Infrastructure** | **High Complexity**. Requires running a vector database, embedding APIs, chunking algorithms, and tuning parameters. | **Zero Vector Cost**. Relies entirely on standard cloud storage (GCS) and file system structures. No vector database needed. |
 
@@ -86,23 +151,23 @@ To fully appreciate the benefits of this active, compounding knowledge base, it 
 
 ## Beneficial Use Cases
 
-The LLM Wiki architecture shines in complex, long-form knowledge environments where information is **dynamic**, **highly interlinked**, and **requires human-in-the-loop verification**.
+The Active Knowledge Agent Wiki architecture shines in complex, long-form knowledge environments where information is **dynamic**, **highly interlinked**, and **requires human-in-the-loop verification**.
 
 ### 📋 1. Insurance Claim Lifecycle & Claims Auditing
 *   **The Challenge**: An insurance claims handler faces an influx of 100+ documents per claim—including police reports, medical bills, mechanic estimates, photos, and email exchanges. The claim evolves over weeks or months, and the handler needs to understand the chronological timeline, identify inconsistencies (e.g., medical treatments mismatching the police report), and build a final audit trail.
 *   **Why Traditional RAG Fails**: RAG retrieves disconnected fragments of text (e.g., a page from a medical report, a sentence from a policy). It cannot synthesize a cohesive timeline or recognize that a fact retrieved today directly contradicts a fact retrieved two weeks ago because it does not keep state.
-*   **The LLM Wiki Solution**: The agent ingests incoming claim documents and actively maintains a compounding claim wiki. 
+*   **The Active Knowledge Agent Wiki Solution**: The agent ingests incoming claim documents and actively maintains a compounding claim wiki. 
     *   It builds a structured timeline (e.g., `/claims/CLAIM-123/timeline.md`), updating it chronologically.
     *   It maps explicit relationships, such as tying `/claims/CLAIM-123/injury-report.md` to the `/claims/CLAIM-123/medical-provider.md` via `treated_by`.
     *   The claims handler can review the resulting claims graph in the Web UI, instantly audit the LLM's synthesis, and correct any errors in the markdown files directly, ensuring perfect factual alignment before final payout approval.
 
 ### ⚖️ 2. Regulatory & Compliance Intelligence
 *   **The Challenge**: Compliance officers in financial services or healthcare must track hundreds of fast-changing regulatory updates, internal policies, and audit reports. They need to map how a new state law impacts existing corporate rules.
-*   **The LLM Wiki Solution**: The agent ingests new regulatory circulars and actively updates a corporate policy wiki. It creates tags for compliance areas and links policies directly to regulations (e.g., `policy.md` `-[implemented_for]->` `regulation.md`). This dynamic compliance graph lets officers immediately see the blast radius of any rule change.
+*   **The Active Knowledge Agent Wiki Solution**: The agent ingests new regulatory circulars and actively updates a corporate policy wiki. It creates tags for compliance areas and links policies directly to regulations (e.g., `policy.md` `-[implemented_for]->` `regulation.md`). This dynamic compliance graph lets officers immediately see the blast radius of any rule change.
 
 ### 🔬 3. Codebase & Technical Architecture Mapping
 *   **The Challenge**: Developers or research teams trying to map out complex system architectures, codebase structures, or open-source protocols.
-*   **The LLM Wiki Solution**: The agent maps out repositories, creates structural directories, extracts and connects concepts (e.g., mapping how MCP servers interact with Agent Platforms), and visualizes these relationships dynamically, creating a self-documenting codebase.
+*   **The Active Knowledge Agent Wiki Solution**: The agent maps out repositories, creates structural directories, extracts and connects concepts (e.g., mapping how MCP servers interact with Agent Platforms), and visualizes these relationships dynamically, creating a self-documenting codebase.
 
 ---
 
@@ -112,21 +177,30 @@ The LLM Wiki architecture shines in complex, long-form knowledge environments wh
 agentwiki-adk/
 ├── app/
 │   ├── __init__.py
-│   ├── agent.py          # Defines the ADK agent and instructions
+│   ├── agent.py             # Defines the ADK Orchestrator Agent and workflow
 │   ├── agent_runtime_app.py # Entry point for Agent Runtime
+│   ├── agents/              # Specialized sub-agents
+│   │   ├── __init__.py
+│   │   ├── extractor_agent.py # Text/file extraction agent
+│   │   ├── synthesizer_agent.py # Wiki composition & GCS editing agent
+│   │   ├── reviewer_agent.py  # Schema & contradiction auditing agent
+│   │   ├── librarian_agent.py # Bookkeeping, indexing, & gaps logging agent
+│   │   └── schema_manager_agent.py # Automated schema evolution manager agent
 │   └── tools/
 │       ├── __init__.py
-│       ├── gcs_io.py     # Tools for reading/writing to GCS
-│       └── extractor.py  # Tools for content extraction
-├── frontend/             # Next.js Web UI
-│   ├── app/              # App router pages and API routes
-│   ├── components/       # React components (Graph, Sidebar, etc.)
+│       ├── gcs_io.py        # Tools for reading/writing to GCS
+│       ├── extractor.py     # Tools for content extraction
+│       └── health.py        # Quantitative wiki health calculation tool
+├── frontend/                # Next.js Web UI
+│   ├── app/                 # App router pages and API routes
+│   ├── components/          # React components (Graph, Sidebar, etc.)
 │   └── ...
-├── pyproject.toml        # Dependencies and project metadata
-├── schema.md             # Initial schema (uploaded to GCS)
-├── index.md              # Initial index (uploaded to GCS)
-├── log.md                # Initial log (uploaded to GCS)
-└── README.md             # This file
+├── pyproject.toml           # Dependencies and project metadata
+├── schema.md                # Initial schema (uploaded to GCS)
+├── index.md                 # Initial index (uploaded to GCS)
+├── log.md                   # Initial log (uploaded to GCS)
+└── README.md                # This file
+
 ```
 
 

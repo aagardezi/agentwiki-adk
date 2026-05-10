@@ -112,24 +112,53 @@ export async function GET() {
             }
 
 
-            // Parse explicit relationships
+            // Parse explicit relationships using a robust line-by-line block parser
             const relationshipsMatch = frontmatter.match(/relationships:\s*\n((?:\s+.*\n?)+)/);
             if (relationshipsMatch) {
                 const relsStr = relationshipsMatch[1];
-                const relRegex = /-\s*target:\s*["']([^"']+)["']\s*\n\s*type:\s*["']([^"']+)["']/g;
-                let relMatch;
-                while ((relMatch = relRegex.exec(relsStr)) !== null) {
-                    let targetId = relMatch[1];
-                    const type = relMatch[2];
-                    
+                const lines = relsStr.split('\n');
+                const relationships: any[] = [];
+                let currentItem: any = null;
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+
+                    if (line.startsWith('  - ')) {
+                        if (currentItem) relationships.push(currentItem);
+                        currentItem = {};
+                        const lineContent = line.substring(4).trim();
+                        const match = lineContent.match(/^(\w+):\s*(.*)/);
+                        if (match) {
+                            const k = match[1];
+                            let v = match[2].trim();
+                            if (v.startsWith('"') || v.startsWith("'")) v = v.slice(1, -1);
+                            currentItem[k] = v;
+                        }
+                    } else if (line.startsWith('    ') && currentItem) {
+                        const match = trimmed.match(/^(\w+):\s*(.*)/);
+                        if (match) {
+                            const k = match[1];
+                            let v = match[2].trim();
+                            if (v.startsWith('"') || v.startsWith("'")) v = v.slice(1, -1);
+                            currentItem[k] = v;
+                        }
+                    }
+                }
+                if (currentItem) relationships.push(currentItem);
+
+                for (const rel of relationships) {
+                    let targetId = rel.target;
+                    const type = rel.type;
+
                     if (targetId) {
                         if (!targetId.endsWith('.md') && !targetId.includes('.')) {
                             targetId += '.md';
                         }
-                        
+
                         console.log(`  Found explicit relationship: ${id} -> ${targetId} (${type})`);
                         links.push({ source: id, target: targetId, isExplicit: true, label: type });
-                        
+
                         if (!nodeIds.has(targetId)) {
                             let group = 'other';
                             if (targetId.includes('/regulators/')) group = 'entity';
@@ -138,11 +167,10 @@ export async function GET() {
                             else if (targetId.includes('/concepts/')) group = 'concept';
                             else if (targetId.startsWith('sources/')) group = 'source';
                             else if (targetId.startsWith('technology/')) group = 'concept';
-                            
+
                             nodes.push({ id: targetId, label: path.basename(targetId, '.md'), group });
                             nodeIds.add(targetId);
                         }
-
                     }
                 }
             }
