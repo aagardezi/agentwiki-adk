@@ -168,6 +168,7 @@ To fully appreciate the benefits of this active, compounding knowledge base, it 
 | **Precision & Links** | **Fuzzy Similarity**. Relies on vector distance, which can retrieve out-of-context or irrelevant text. | **High-Precision Graph**. Uses hard, semantic relationships (`regulated_by`, `contradicts`) and tags defined by the LLM in page frontmatter. |
 | **Auditability** | **Black Box**. Vector store contains binary embeddings. Extremely difficult for humans to audit or manually correct. | **Transparent**. Made of clean, human-readable Markdown files in GCS. Humans can directly read and edit the agent's memory. |
 | **Infrastructure** | **High Complexity**. Requires running a vector database, embedding APIs, chunking algorithms, and tuning parameters. | **Zero Vector Cost**. Relies entirely on standard cloud storage (GCS) and file system structures. No vector database needed. |
+| **Temporal Validity** | **Time Blind**. Vector search cannot separate overlapping historical document versions, retrieving conflicting text from multiple years (e.g., 2024 vs. 2025 booklet chunks). | **Time Aware**. Pages are organized in versioned directories and tagged with validity dates in frontmatter, enabling the Orchestrator to query precise historical policy contexts. |
 
 ---
 

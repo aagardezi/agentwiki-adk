@@ -189,6 +189,7 @@ In a standard RAG setup:
 *   **Lack of Synthesis**: The system never synthesizes the chunks into a coherent whole *before* query time.
 *   **No Cross-Referencing**: It struggles to connect dots across different documents unless they happen to be retrieved together.
 *   **Hallucination Risk**: Vector search can retrieve superficially similar but contextually irrelevant chunks, leading to hallucinated answers.
+*   **Temporal Ignorance (Time Blindness)**: Vector search is completely blind to time and versioning. E.g., if an insurance company has multiple versions of policy booklets for its chatbot valid from different points in time, putting all booklets into a standard RAG setup (like VAIS) causes it to retrieve overlapping, linguistically similar chunks from conflicting years simultaneously, even if the user explicitly specifies the policy start date. Standard vector space cannot isolate data by temporal boundaries.
 
 ### The Active Knowledge Agent Wiki Pattern: Active and Stateful
 
@@ -201,6 +202,7 @@ The Active Knowledge Agent Wiki pattern flips this model by having the agent act
 3.  **Reduced Noise and High Precision**: Guided by a central `index.md` and strict schemas, the agent knows exactly where to find information. It doesn't get confused by similar-sounding but unrelated chunks of text.
 4.  **Human Auditable and Editable**: Traditional RAG stores data in a complex, binary vector database that humans cannot read or easily fix. The Active Knowledge Agent Wiki consists of plain markdown files in GCS. A human expert can read them, spot errors, and edit them directly to correct the agent's memory.
 5.  **Zero Vector Infrastructure**: You don't need to manage a vector database, handle embedding models, or tune chunk sizes and overlap parameters. This significantly reduces infrastructure cost and complexity.
+6.  **Temporal and Versioned Precision**: By dynamically organizing documents into version-specific folders (e.g., `/policies/2024/booklet.md`) and tagging them with precise validity ranges in frontmatter metadata, the orchestrator can selectively retrieve and process exact time-bound documents, guaranteeing zero cross-contamination of conflicting historical policies.
 
 ---
 
