@@ -14,6 +14,23 @@ const basename = (path: string, ext?: string) => {
     return name;
 };
 
+const normalizePath = (path: string) => {
+    if (!path) return '';
+    const parts = path.split('/');
+    const stack: string[] = [];
+    for (const part of parts) {
+        if (part === '.' || part === '') {
+            continue;
+        }
+        if (part === '..') {
+            stack.pop();
+        } else {
+            stack.push(part);
+        }
+    }
+    return (path.startsWith('/') ? '/' : '') + stack.join('/');
+};
+
 interface MarkdownViewerProps {
   filePath: string;
   onNavigate: (path: string) => void;
@@ -142,38 +159,41 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
         return relativePath;
     }
     
+    let resolved = relativePath;
+    
     // If relativePath starts with a folder name (e.g., "agents/...", "compliance/..."),
     // it is likely intended to be relative to the bucket root, even if it doesn't have a leading slash.
     // Our sidebar and API use paths relative to the bucket root.
     if (!relativePath.startsWith('.') && relativePath.includes('/')) {
-        return relativePath;
-    }
-
-    const pathParts = currentPath.split('/').filter(Boolean);
-    pathParts.pop(); // Remove file name
-    const currentDir = pathParts.join('/');
-    let resolved = relativePath;
-    
-    if (relativePath.startsWith('../')) {
-        const parts = currentDir.split('/').filter(Boolean);
-        const relParts = relativePath.split('/');
+        resolved = relativePath;
+    } else {
+        const pathParts = currentPath.split('/').filter(Boolean);
+        pathParts.pop(); // Remove file name
+        const currentDir = pathParts.join('/');
         
-        for (const part of relParts) {
-            if (part === '..') {
-                parts.pop();
-            } else if (part !== '.') {
-                parts.push(part);
+        if (relativePath.startsWith('../')) {
+            const parts = currentDir.split('/').filter(Boolean);
+            const relParts = relativePath.split('/');
+            
+            for (const part of relParts) {
+                if (part === '..') {
+                    parts.pop();
+                } else if (part !== '.') {
+                    parts.push(part);
+                }
+            }
+            resolved = parts.join('/');
+        } else if (!relativePath.startsWith('/')) {
+            // Same directory
+            if (currentDir && currentDir !== '.') {
+                resolved = `${currentDir}/${relativePath}`;
+            } else {
+                resolved = relativePath;
             }
         }
-        resolved = parts.join('/');
-    } else if (!relativePath.startsWith('/')) {
-        // Same directory
-        if (currentDir !== '.') {
-            resolved = `${currentDir}/${relativePath}`;
-        }
     }
     
-    return resolved;
+    return normalizePath(resolved);
   };
 
 
