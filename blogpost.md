@@ -1,5 +1,8 @@
 # Beyond RAG: The Active Knowledge Agent Wiki Pattern for Compounding Agent Memory
 
+*Author: Syed Gardezi sgardezi@google.com*
+*Date: May 2026*
+
 ## The Problem with Traditional RAG
 
 Retrieval-Augmented Generation (RAG) has been the go-to pattern for grounding Large Language Models (LLMs) in specific data. While effective, traditional RAG has a fundamental limitation: **it is passive and stateless.**
