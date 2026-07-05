@@ -2,14 +2,15 @@ sequenceDiagram
     autonumber
     actor User
     participant Orchestrator as Orchestrator Agent
-    participant Extractor as Extractor Agent
+    participant Extractor as Extractor Node / Tool
     participant Synthesizer as Synthesizer Agent
     participant Reviewer as Reviewer Agent
     participant Librarian as Librarian Agent
     participant GCS as GCS Storage Bucket
 
     User->>Orchestrator: Ingest Request (Source URL/File)
-    Orchestrator->>Extractor: Extract content
+    Orchestrator->>Extractor: Extract content & upload
+    Extractor->>GCS: Upload original file to raw_data/
     Extractor->>Orchestrator: Extracted source text
     Orchestrator->>Synthesizer: Write wiki pages
     Synthesizer->>GCS: Read existing pages & write updates

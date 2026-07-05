@@ -11,6 +11,7 @@ from app.agents.librarian_agent import librarian_agent
 from app.agents.reviewer_agent import reviewer_agent
 from app.agents.schema_manager_agent import schema_manager_agent
 from app.agents.synthesizer_agent import synthesizer_agent
+from app.agents.wiki_researcher_agent import wiki_researcher_agent
 from app.config import WIKI_BUCKET_NAME, get_current_date_time, make_model
 from app.tools.extractor import extract_content
 from app.tools.gcs_io import list_wiki_files, read_wiki_file
@@ -181,133 +182,11 @@ Reviewer Report:
     yield Event(output=response_msg)
 
 
-# 6. Query Node (with Programmatic Grounding Context)
-@node
+# 6. Query Node (using wiki_researcher_agent)
+@node(rerun_on_resume=True)
 async def run_query(ctx: Context, node_input: types.Content) -> Event:
-    query_text = ""
-    for part in node_input.parts:
-        if part.text:
-            query_text += part.text + "\n"
-
-    # Step 1: Read index.md and log.md
-    index_content = read_wiki_file("index.md")
-    log_content = read_wiki_file("log.md")
-
-    # Step 2: Use LLM to identify relevant page filenames from index.md and log.md
-    client = _get_client()
-    search_prompt = f"""You are a search assistant. Given the wiki index, update log, and a user query, identify all relevant page filenames (.md files) that may contain the answer. Return them as a comma-separated list of filenames, e.g. "sources/pra_ss4_24.md, entities/capital_buffers.md". Return only the list of filenames, or "NONE" if no pages are relevant.
-    
-Wiki Index:
-{index_content}
-
-Update Log (log.md):
-{log_content}
-
-User Query: {query_text}"""
-
-    response = client.models.generate_content(
-        model=make_model().model,
-        contents=search_prompt,
-    )
-    search_results = response.text or ""
-
-    filenames = []
-    if "NONE" not in search_results.upper():
-        filenames = [
-            f.strip() for f in search_results.split(",") if f.strip().endswith(".md")
-        ]
-
-    grounding_context = []
-    for fname in filenames:
-        content = read_wiki_file(fname)
-        if content:
-            grounding_context.append(f"=== Page: {fname} ===\n{content}")
-
-            # Step 3: Find referenced source files in page content/frontmatter
-            import re
-
-            sources_matches = re.findall(r"sources:\s*\[(.*?)\]", content)
-            for sm in sources_matches:
-                s_files = [
-                    sf.strip().replace("'", "").replace('"', "")
-                    for sf in sm.split(",")
-                    if sf.strip()
-                ]
-                for sf in s_files:
-                    s_content = read_wiki_file(sf)
-                    if s_content:
-                        grounding_context.append(
-                            f"=== Source Summary: {sf} ===\n{s_content}"
-                        )
-                        # Step 4: Check if source summary contains a link to raw_data/
-                        raw_link_match = re.search(
-                            r"\[Original File\]\(\.\./(raw_data/.*?)\)", s_content
-                        )
-                        if raw_link_match:
-                            raw_path = raw_link_match.group(1)
-                            raw_content = read_wiki_file(raw_path)
-                            if raw_content:
-                                grounding_context.append(
-                                    f"=== Original Raw File: {raw_path} ===\n{raw_content}"
-                                )
-
-            # Also check for inline links to sources/
-            inline_matches = re.findall(r"\]\(\.\./(sources/.*?\.md)\)", content)
-            for im in inline_matches:
-                s_content = read_wiki_file(im)
-                if s_content:
-                    grounding_context.append(
-                        f"=== Source Summary: {im} ===\n{s_content}"
-                    )
-                    raw_link_match = re.search(
-                        r"\[Original File\]\(\.\./(raw_data/.*?)\)", s_content
-                    )
-                    if raw_link_match:
-                        raw_path = raw_link_match.group(1)
-                        raw_content = read_wiki_file(raw_path)
-                        if raw_content:
-                            grounding_context.append(
-                                f"=== Original Raw File: {raw_path} ===\n{raw_content}"
-                            )
-
-    # Add index and log to grounding context explicitly
-    grounding_context.append(f"=== Wiki Index (index.md) ===\n{index_content}")
-    grounding_context.append(f"=== Update Log (log.md) ===\n{log_content}")
-
-    # Step 5: Generate cited grounded answer
-    context_str = "\n\n".join(grounding_context)
-    final_prompt = f"""You are the Antigravity Wiki Agent. Answer the user query using the provided grounding context from the wiki (which includes index files, logs, source summaries, and original raw documents).
-    
-Chronology & Temporal Logic:
-- Refer to `log.md` and page timestamps to understand when data was ingested and updated.
-- If there are conflicting claims, contradictions, or updates, the entry with the most recent timestamp in `log.md` or page frontmatter represents the current active state of the wiki.
-
-Requirements:
-- Your response must be highly thorough, detailed, and formatted in clear markdown.
-- You MUST explicitly cite all wiki pages, source summaries, and original raw GCS files (e.g. `raw_data/filename`) you used to construct your answer.
-- If the context doesn't contain the answer, state that you don't know based on the wiki.
-
-Grounding Context:
-{context_str}
-
-User Query: {query_text}"""
-
-    response_stream = client.models.generate_content_stream(
-        model=make_model().model,
-        contents=final_prompt,
-    )
-
-    answer_text = ""
-    for chunk in response_stream:
-        if chunk.text:
-            answer_text += chunk.text
-            yield Event(
-                content=types.Content(
-                    role="model", parts=[types.Part.from_text(text=chunk.text)]
-                )
-            )
-
-    yield Event(output=answer_text)
+    async for event in wiki_researcher_agent.run_async(ctx.get_invocation_context()):
+        yield event
 
 
 # 7. Schema Manager Node
@@ -365,6 +244,7 @@ root_agent = Workflow(
         reviewer_agent,
         librarian_agent,
         schema_manager_agent,
+        wiki_researcher_agent,
     ],
     description="Wiki Orchestrator Workflow Agent",
 )

@@ -13,6 +13,7 @@ Special files at the root:
 - `gaps.md`: Auto-maintained list of stub pages (knowledge gaps detected during ingest).
 - `schema_proposals.md`: Proposals for schema evolution filed by the Librarian Agent.
 - `sources/`: Directory for summaries of raw sources (keep flat).
+- `raw_data/`: Directory storing unmodified raw source files in GCS (the immutable ground truth).
 
 Example of a logical hierarchy (the agent is encouraged to create new branches as needed):
 - `regulations/`
@@ -111,10 +112,11 @@ Every knowledge page MUST include a `confidence` score (0.0–1.0) reflecting th
 ### Ingest
 
 When a new source is provided:
-1. Read the source content.
-2. Create a summary page in `sources/`.
-3. Identify relevant entities, concepts, technologies, protocols, and organizations. Be thorough in extracting new terms.
-4. Update existing pages or create new ones in a logically determined hierarchical directory.
+1. Upload the unmodified original file to GCS under `raw_data/`.
+2. Extract the source content from the file/url.
+3. Create a summary page in `sources/`. In this summary page, link to the raw data file using the relative format: `[Original File](../raw_data/<filename>)`.
+4. Identify relevant entities, concepts, technologies, protocols, and organizations. Be thorough in extracting new terms.
+5. Update existing pages or create new ones in a logically determined hierarchical directory.
    - Regulations (articles, rules, supervisory/policy statements) MUST go under `regulations/`.
    - Structural capital, buffers, and leverage framework details MUST go under `capital_and_liquidity/`.
    - Domain-specific risk details (credit risk, market risk, counterparty credit risk, operational risk, CVA, etc.) MUST go under `risk_measurement/`.
@@ -123,10 +125,10 @@ When a new source is provided:
    - You are encouraged to create new subdirectories or even top-level domains if the topic warrants it.
 
 
-5. **Identify Relationships**: Actively look for specific relationships between the new/updated pages and existing pages. Add them to the `relationships` frontmatter.
-6. **Add Tags**: Assign relevant tags to the page in the frontmatter to facilitate discovery and filtering.
-7. Update `index.md` with links to new/updated pages.
-8. Append an entry to `log.md`.
+6. **Identify Relationships**: Actively look for specific relationships between the new/updated pages and existing pages. Add them to the `relationships` frontmatter.
+7. **Add Tags**: Assign relevant tags to the page in the frontmatter to facilitate discovery and filtering.
+8. Update `index.md` with links to new/updated pages.
+9. Append an entry to `log.md`.
 
 
 

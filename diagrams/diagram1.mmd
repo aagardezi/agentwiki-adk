@@ -3,18 +3,20 @@ graph TD
     User -->|Browse & Audit| UI[Wiki Web UI]
 
     subgraph multi_agent ["Hierarchical Multi-Agent System"]
-        Orch -->|2. Extract Source| Ext[Extractor Agent]
-        Orch -->|3. Write Content| Synth[Synthesizer Agent]
-        Orch -->|4. Verify Factual Integrity| Rev[Reviewer Agent]
-        Orch -->|5. Re-Index & Log| Lib[Librarian Agent]
-        Orch -->|6. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
+        Orch -->|2. Write Content| Synth[Synthesizer Agent]
+        Orch -->|3. Verify Factual Integrity| Rev[Reviewer Agent]
+        Orch -->|4. Re-Index & Log| Lib[Librarian Agent]
+        Orch -->|5. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
+        Orch -->|6. Query / Q&A| Res[Wiki Researcher Agent]
     end
 
-    Ext -->|Extract| ExtTools[Extractor Tools]
-    Synth -->|Read/Write Pages| GCS[(GCS Wiki Bucket)]
+    Orch -->|Extract & Upload| ExtTools[Extractor Tools]
+    ExtTools -->|Upload Raw| GCS[(GCS Wiki Bucket)]
+    Synth -->|Read/Write Pages| GCS
     Rev -->|Factual Audit| GCS
     Lib -->|Maintain Index & Gaps| GCS
     SchemaMgr -->|Read/Merge Proposals| GCS
+    Res -->|Read Index, Logs & Pages| GCS
     
     UI -->|Fetch Graph/Tree| GCS
 
@@ -24,6 +26,7 @@ graph TD
         log[log.md]
         gaps[gaps.md]
         proposals[schema_proposals.md]
+        raw_data[raw_data/]
         hierarchy[Dynamic Hierarchical Folders...]
     end
 

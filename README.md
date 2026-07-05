@@ -16,8 +16,9 @@ Unlike traditional RAG systems that retrieve raw document chunks at query time a
 
 ## Architecture & Design
 
-The system consists of four main layers:
+The system consists of five main layers:
 -   **Raw Sources**: Files or URLs provided by the user (immutable).
+-   **GCS Raw Data**: Unmodified raw files stored in GCS under the `raw_data/` folder (acting as the source of truth).
 -   **The Wiki**: A directory of LLM-generated markdown files stored in GCS (configured via `WIKI_BUCKET_NAME` environment variable).
 -   **The Schema**: `schema.md` (also in GCS) defining rules and conventions for the agent.
 -   **The Web UI**: A Next.js application providing:
@@ -34,7 +35,7 @@ The system consists of four main layers:
 The system is powered by a **hierarchical multi-agent orchestration system** built on top of the Google Agent Development Kit (ADK). Rather than a single agent attempting to execute all reasoning, verification, and compilation steps sequentially, tasks are delegated to specialized, autonomous sub-agents collaborating through a central orchestrator.
 
 - **Orchestrator Agent** ([agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agent.py)): The root agent that receives input, initializes the workflow pipeline, coordinates sub-agent tasks, and returns progress reports to the user.
-- **Extractor Agent** ([extractor_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/extractor_agent.py)): A single-responsibility agent equipped with extraction tools that retrieves full, un-truncated text from provided files, PDFs, and URLs.
+- **Wiki Researcher Agent** ([wiki_researcher_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/wiki_researcher_agent.py)): An agent that executes the retrieval/Q&A pipeline, analyzing the central index to locate relevant paths, reading wiki pages, source summaries, and raw files under `raw_data/` to answer queries.
 - **Synthesizer Agent** ([synthesizer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/synthesizer_agent.py)): The core processor that digests extracted source text, identifies concepts, creates/modifies dynamic markdown files in GCS, and defines explicitly typed frontmatter relationships.
 - **Reviewer Agent** ([reviewer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/reviewer_agent.py)): An independent auditor that scans modified knowledge pages, ensures strict schema compliance, cross-checks claims for contradictions, and flags pages as `contested` if conflicts are found.
 - **Librarian Agent** ([librarian_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/librarian_agent.py)): A bookkeeping agent responsible for maintaining catalog files, compiling `index.md`, recording chronological actions in `log.md`, and tracking stub references in `gaps.md`.
@@ -48,18 +49,20 @@ graph TD
     User -->|Browse & Audit| UI[Wiki Web UI]
 
     subgraph multi_agent ["Hierarchical Multi-Agent System"]
-        Orch -->|2. Extract Source| Ext[Extractor Agent]
-        Orch -->|3. Write Content| Synth[Synthesizer Agent]
-        Orch -->|4. Verify Factual Integrity| Rev[Reviewer Agent]
-        Orch -->|5. Re-Index & Log| Lib[Librarian Agent]
-        Orch -->|6. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
+        Orch -->|2. Write Content| Synth[Synthesizer Agent]
+        Orch -->|3. Verify Factual Integrity| Rev[Reviewer Agent]
+        Orch -->|4. Re-Index & Log| Lib[Librarian Agent]
+        Orch -->|5. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
+        Orch -->|6. Query / Q&A| Res[Wiki Researcher Agent]
     end
 
-    Ext -->|Extract| ExtTools[Extractor Tools]
-    Synth -->|Read/Write Pages| GCS[(GCS Wiki Bucket)]
+    Orch -->|Extract & Upload| ExtTools[Extractor Tools]
+    ExtTools -->|Upload Raw| GCS[(GCS Wiki Bucket)]
+    Synth -->|Read/Write Pages| GCS
     Rev -->|Factual Audit| GCS
     Lib -->|Maintain Index & Gaps| GCS
     SchemaMgr -->|Read/Merge Proposals| GCS
+    Res -->|Read Index, Logs & Pages| GCS
     
     UI -->|Fetch Graph/Tree| GCS
 
@@ -69,6 +72,7 @@ graph TD
         log[log.md]
         gaps[gaps.md]
         proposals[schema_proposals.md]
+        raw_data[raw_data/]
         hierarchy[Dynamic Hierarchical Folders...]
     end
 
@@ -86,14 +90,15 @@ sequenceDiagram
     autonumber
     actor User
     participant Orchestrator as Orchestrator Agent
-    participant Extractor as Extractor Agent
+    participant Extractor as Extractor Node / Tool
     participant Synthesizer as Synthesizer Agent
     participant Reviewer as Reviewer Agent
     participant Librarian as Librarian Agent
     participant GCS as GCS Storage Bucket
 
     User->>Orchestrator: Ingest Request (Source URL/File)
-    Orchestrator->>Extractor: Extract content
+    Orchestrator->>Extractor: Extract content & upload
+    Extractor->>GCS: Upload original file to raw_data/
     Extractor->>Orchestrator: Extracted source text
     Orchestrator->>Synthesizer: Write wiki pages
     Synthesizer->>GCS: Read existing pages & write updates
@@ -143,16 +148,25 @@ sequenceDiagram
     autonumber
     actor User
     participant Orchestrator as Orchestrator Agent
+    participant Researcher as Wiki Researcher Agent
     participant GCS as GCS Storage Bucket
 
     User->>Orchestrator: Q&A/Summary Request (e.g., "Summarize frameworks for IAP")
-    Orchestrator->>GCS: read_wiki_file("index.md")
-    GCS-->>Orchestrator: Central Index mappings & tags
-    Note over Orchestrator: Analyze Index to locate matching paths<br/>based on tags, directories, and links
-    Orchestrator->>GCS: read_wiki_file("technology/iap.md")
-    GCS-->>Orchestrator: Document frontmatter & markdown body
-    Note over Orchestrator: Parse document content,<br/>synthesize summary, and formulate citations
-    Orchestrator-->>User: Grounded response with explicit file citations
+    Orchestrator->>Researcher: Delegate query to researcher
+    Researcher->>GCS: read_wiki_file("index.md") & "log.md"
+    GCS-->>Researcher: Index structure & chronological log
+    Note over Researcher: Identify relevant page paths<br/>based on index & log
+    Researcher->>GCS: read_wiki_file("technology/iap.md")
+    GCS-->>Researcher: Target page text & metadata
+    Note over Researcher: Identify referenced source summaries
+    Researcher->>GCS: read_wiki_file("sources/src_iap.md")
+    GCS-->>Researcher: Source summary content with raw link
+    Note over Researcher: Locate and retrieve original raw file
+    Researcher->>GCS: read_wiki_file("raw_data/iap_doc.pdf")
+    GCS-->>Researcher: Original raw file contents
+    Note over Researcher: Synthesize citation-backed response<br/>directly from verified data
+    Researcher-->>Orchestrator: Grounded response
+    Orchestrator-->>User: Fully grounded answer with citations
 ```
 
 
@@ -204,7 +218,7 @@ agentwiki-adk/
 │   ├── agent_runtime_app.py # Entry point for Agent Runtime
 │   ├── agents/              # Specialized sub-agents
 │   │   ├── __init__.py
-│   │   ├── extractor_agent.py # Text/file extraction agent
+│   │   ├── wiki_researcher_agent.py # Retrieval and Q&A researcher agent
 │   │   ├── synthesizer_agent.py # Wiki composition & GCS editing agent
 │   │   ├── reviewer_agent.py  # Schema & contradiction auditing agent
 │   │   ├── librarian_agent.py # Bookkeeping, indexing, & gaps logging agent

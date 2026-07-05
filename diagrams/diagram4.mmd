@@ -2,13 +2,22 @@ sequenceDiagram
     autonumber
     actor User
     participant Orchestrator as Orchestrator Agent
+    participant Researcher as Wiki Researcher Agent
     participant GCS as GCS Storage Bucket
 
     User->>Orchestrator: Q&A/Summary Request (e.g., "Summarize frameworks for IAP")
-    Orchestrator->>GCS: read_wiki_file("index.md")
-    GCS-->>Orchestrator: Index structure and page references
-    Note over Orchestrator: Find highly grounded pages matching<br/>the query via tags and paths
-    Orchestrator->>GCS: read_wiki_file("technology/iap.md")
-    GCS-->>Orchestrator: Target page text & metadata
-    Note over Orchestrator: Synthesize citation-backed response<br/>directly from verified data
+    Orchestrator->>Researcher: Delegate query to researcher
+    Researcher->>GCS: read_wiki_file("index.md") & "log.md"
+    GCS-->>Researcher: Index structure & chronological log
+    Note over Researcher: Identify relevant page paths<br/>based on index & log
+    Researcher->>GCS: read_wiki_file("technology/iap.md")
+    GCS-->>Researcher: Target page text & metadata
+    Note over Researcher: Identify referenced source summaries
+    Researcher->>GCS: read_wiki_file("sources/src_iap.md")
+    GCS-->>Researcher: Source summary content with raw link
+    Note over Researcher: Locate and retrieve original raw file
+    Researcher->>GCS: read_wiki_file("raw_data/iap_doc.pdf")
+    GCS-->>Researcher: Original raw file contents
+    Note over Researcher: Synthesize citation-backed response<br/>directly from verified data
+    Researcher-->>Orchestrator: Grounded response
     Orchestrator-->>User: Fully grounded answer with citations
