@@ -45,26 +45,35 @@ The system is powered by a **hierarchical multi-agent orchestration system** bui
 
 ```mermaid
 graph TD
-    User([User]) -->|1. Ingest / Query Request| Orch[Orchestrator Agent]
-    User -->|Browse & Audit| UI[Wiki Web UI]
+    User([User]) -->|Browse & Audit| UI["Wiki Web UI"]
+    User -->|Ingest / Query / Lint / Schema Request| Server["FastAPI Backend Server"]
 
-    subgraph multi_agent ["Hierarchical Multi-Agent System"]
-        Orch -->|2. Write Content| Synth[Synthesizer Agent]
-        Orch -->|3. Verify Factual Integrity| Rev[Reviewer Agent]
-        Orch -->|4. Re-Index & Log| Lib[Librarian Agent]
-        Orch -->|5. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
-        Orch -->|6. Query / Q&A| Res[Wiki Researcher Agent]
+    UI -->|REST API Requests| Server
+    Server -->|Read Wiki Content| GCS[(GCS Wiki Bucket)]
+
+    subgraph backend ["FastAPI Backend Server (ADK App)"]
+        Server --> Orch["Orchestrator (ADK Workflow)"]
+
+        Orch -->|Ingest| Extractor["Extractor Node/Tool"]
+        Extractor --> Synth["Synthesizer Agent"]
+        Synth --> Rev["Reviewer Agent"]
+        Rev --> Lib["Librarian Agent"]
+
+        Orch -->|Query| Res["Wiki Researcher Agent"]
+
+        Orch -->|Schema| SchemaMgr["Schema Manager Agent"]
+
+        Orch -->|Lint| Linter["Linter Node"]
+        Linter --> Rev
     end
 
-    Orch -->|Extract & Upload| ExtTools[Extractor Tools]
-    ExtTools -->|Upload Raw| GCS[(GCS Wiki Bucket)]
+    Extractor -->|Upload Raw| GCS
     Synth -->|Read/Write Pages| GCS
-    Rev -->|Factual Audit| GCS
-    Lib -->|Maintain Index & Gaps| GCS
-    SchemaMgr -->|Read/Merge Proposals| GCS
-    Res -->|Read Index, Logs & Pages| GCS
-    
-    UI -->|Fetch Graph/Tree| GCS
+    Rev -->|Read/Write Contradictions & Audits| GCS
+    Lib -->|Read/Write index.md, log.md & gaps.md| GCS
+    SchemaMgr -->|Read/Write schema.md & schema_proposals.md| GCS
+    Res -->|Read index.md & Pages| GCS
+    Linter -->|Read Pages for audit| GCS
 
     subgraph gcs_bucket ["GCS Bucket Layout"]
         schema[schema.md]
