@@ -61,9 +61,11 @@ Confidence guidelines:
 - Below 0.5: Speculative, conflicting, or single unverified source
 
 Add rich inline markdown links to related pages. Use relative paths.
+CRITICAL FORMAT CONSTRAINT: Do NOT use double-bracketed wiki links like `[[page.md]]` or `[[path/to/page]]`. ALWAYS use standard relative markdown link syntax, e.g. `[Page Title](../../path/to/page.md)`.
 
 **Step 4 — Create Source Summary**
 Write a summary page to `sources/<source-id>.md` recording the source URL/path, date ingested, and a brief abstract.
+If the source was a file path, the summary page MUST contain a markdown link reference to the original file in the `raw_data/` folder, formatted exactly as: `[Original File](../raw_data/<filename>)` (where `<filename>` is the basename of the source file, preserving its original extension).
 
 **Step 5 — Return Manifest**
 Return a manifest of every file you created or updated, one per line, prefixed with CREATE or UPDATE:

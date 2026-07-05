@@ -42,6 +42,9 @@ Append a timestamped entry (call `get_current_date_time`) to `log.md`:
 > Add under Directory Structure: `<path>/` — <description>
 ```
 
+**Link Formatting Rules**:
+CRITICAL FORMAT CONSTRAINT: When referencing other files or creating links in `index.md` or `log.md`, you must NEVER use double-bracketed wiki links (e.g. `[[page.md]]`). ALWAYS use standard relative markdown link syntax (e.g. `[Page Title](../../path/to/page.md)`).
+
 **Task 4 — Return Confirmation**
 Return a brief confirmation of all navigational updates made, including how many index entries were added and whether a schema proposal was filed.
 """,

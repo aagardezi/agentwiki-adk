@@ -21,7 +21,11 @@ def compute_wiki_health() -> str:
     confidences: list[float] = []
 
     for fname in files:
-        if fname in _SKIP_FILES or fname.startswith("sources/"):
+        if (
+            fname in _SKIP_FILES
+            or fname.startswith("sources/")
+            or fname.startswith("raw_data/")
+        ):
             continue
         total += 1
         content = read_wiki_file(fname)

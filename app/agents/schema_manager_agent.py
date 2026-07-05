@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from google.adk.agents import Agent
 from google.adk.agents.base_agent import BaseAgent

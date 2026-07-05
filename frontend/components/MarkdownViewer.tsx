@@ -37,6 +37,8 @@ interface MarkdownViewerProps {
 }
 
 export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerProps) {
+  const [isBinary, setIsBinary] = useState(false);
+  const [contentType, setContentType] = useState('');
   const [content, setContent] = useState('');
   const [metadata, setMetadata] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,8 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
         setLoading(false);
         setContent('');
         setMetadata({});
+        setIsBinary(false);
+        setContentType('');
         return;
     }
 
@@ -64,6 +68,17 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
     fetch(`/api/wiki/content?path=${encodeURIComponent(filePath)}`)
       .then(res => res.json())
       .then(data => {
+        if (data.isBinary) {
+          setIsBinary(true);
+          setContentType(data.contentType);
+          setContent(data.content);
+          setMetadata({});
+          setLoading(false);
+          return;
+        }
+
+        setIsBinary(false);
+        setContentType(data.contentType || 'text/markdown');
         const rawContent = data.content || 'No content found.';
 
         
@@ -228,6 +243,40 @@ export default function MarkdownViewer({ filePath, onNavigate }: MarkdownViewerP
             {allFiles.filter(file => file.tags && file.tags.map(t => t.toLowerCase()).includes(filePath.substring(4).toLowerCase())).length === 0 && (
                 <div className="text-zinc-600 text-sm">No files found with this tag.</div>
             )}
+          </div>
+        </div>
+      ) : isBinary ? (
+        <div className="max-w-3xl mx-auto">
+          <div className="mb-4 text-zinc-500 text-sm">{filePath}</div>
+          
+          <div className="mb-6">
+            {contentType === 'application/pdf' ? (
+              <iframe
+                src={`data:${contentType};base64,${content}`}
+                className="w-full h-[600px] border border-zinc-800 rounded-lg bg-zinc-900"
+                title={filePath}
+              />
+            ) : contentType.startsWith('image/') ? (
+              <img
+                src={`data:${contentType};base64,${content}`}
+                alt={filePath}
+                className="max-w-full h-auto mx-auto rounded-lg border border-zinc-800"
+              />
+            ) : (
+              <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-400">
+                Preview not supported for this file type ({contentType}).
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-end mt-4">
+            <a
+              href={`data:${contentType};base64,${content}`}
+              download={basename(filePath)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-lg transition-colors"
+            >
+              Download File
+            </a>
           </div>
         </div>
       ) : (

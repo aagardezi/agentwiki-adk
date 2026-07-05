@@ -80,7 +80,7 @@ function TreeItem({ node, onSelectFile, depth = 0 }: { node: TreeNode, onSelectF
           className="text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 w-full text-left px-2 py-1 rounded transition-colors flex items-center gap-2"
         >
           <span className="text-zinc-600">📄</span>
-          <span>{node.name.replace('.md', '')}</span>
+          <span>{node.name.endsWith('.md') ? node.name.slice(0, -3) : node.name}</span>
         </button>
       ) : (
         <div>

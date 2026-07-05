@@ -1,0 +1,12 @@
+name: agentwiki-adk-multiagent
+description: Simple ReAct agent
+base_template: adk
+agent_directory: app
+generated_at: '2026-05-07T00:19:37.947529+00:00'
+acli_version: 0.4.0
+create_params:
+  deployment_target: agent_runtime
+  session_type: none
+  cicd_runner: skip
+  include_data_ingestion: false
+  datastore: none

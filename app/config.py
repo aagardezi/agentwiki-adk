@@ -34,16 +34,18 @@ def _get_project_id() -> str:
     return project_id
 
 
-def make_model(model_name: str = "gemini-3-flash-preview") -> google_llm.Gemini:
+class VertexGemini(google_llm.Gemini):
+    @property
+    def api_client(self) -> genai.Client:
+        return genai.Client(vertexai=True, project=_get_project_id(), location="global")
+
+
+def make_model(model_name: str = "gemini-3.5-flash") -> google_llm.Gemini:
     """Creates a configured Gemini model instance with Vertex AI client."""
-    api_client = genai.Client(
-        vertexai=True, project=_get_project_id(), location="global"
-    )
-    model = google_llm.Gemini(
+    model = VertexGemini(
         model=model_name,
         retry_options=types.HttpRetryOptions(attempts=3),
     )
-    model.api_client = api_client
     return model
 
 
