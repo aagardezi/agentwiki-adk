@@ -2,13 +2,27 @@ sequenceDiagram
     autonumber
     actor User
     participant Orchestrator as Orchestrator Agent
+    participant Researcher as Wiki Researcher Agent
+    participant Critic as Critic Agent
     participant GCS as GCS Storage Bucket
 
     User->>Orchestrator: Q&A/Summary Request (e.g., "Summarize frameworks for IAP")
-    Orchestrator->>GCS: read_wiki_file("index.md")
-    GCS-->>Orchestrator: Index structure and page references
-    Note over Orchestrator: Find highly grounded pages matching<br/>the query via tags and paths
-    Orchestrator->>GCS: read_wiki_file("technology/iap.md")
-    GCS-->>Orchestrator: Target page text & metadata
-    Note over Orchestrator: Synthesize citation-backed response<br/>directly from verified data
-    Orchestrator-->>User: Fully grounded answer with citations
+    Orchestrator->>Researcher: Delegate query to researcher
+    loop Verification & Critic Loop (Capped at 2 revisions)
+        Researcher->>GCS: read_wiki_file("index.md") & "log.md"
+        GCS-->>Researcher: Index structure & chronological log
+        Note over Researcher: Navigate & read wiki pages,<br/>source summaries, & raw files
+        Researcher->>GCS: read_wiki_file("raw_data/original_file.pdf")
+        GCS-->>Researcher: Original GCS raw document
+        Note over Researcher: Generate draft response
+        Researcher-->>Orchestrator: Draft response
+        Orchestrator->>Critic: Run critic review
+        Critic->>GCS: Verify claims & citations
+        Critic-->>Orchestrator: STATUS (APPROVED or REVISE)
+        alt APPROVED
+            Note over Orchestrator: Finalize approved response
+        else REVISE (Increment Loop Count)
+            Note over Orchestrator: Append draft and critic's feedback<br/>to session history (await asyncio.sleep)
+        end
+    end
+    Orchestrator-->>User: Final response rendered as markdown chat bubble (message_as_output)

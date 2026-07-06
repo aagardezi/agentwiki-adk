@@ -1,22 +1,36 @@
 graph TD
-    User([User]) -->|1. Ingest / Query Request| Orch[Orchestrator Agent]
-    User -->|Browse & Audit| UI[Wiki Web UI]
+    User([User]) -->|Browse & Audit| UI["Wiki Web UI"]
+    User -->|Ingest / Query / Lint / Schema Request| Server["FastAPI Backend Server"]
 
-    subgraph multi_agent ["Hierarchical Multi-Agent System"]
-        Orch -->|2. Extract Source| Ext[Extractor Agent]
-        Orch -->|3. Write Content| Synth[Synthesizer Agent]
-        Orch -->|4. Verify Factual Integrity| Rev[Reviewer Agent]
-        Orch -->|5. Re-Index & Log| Lib[Librarian Agent]
-        Orch -->|6. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
+    UI -->|REST API Requests| Server
+    Server -->|Read Wiki Content| GCS[(GCS Wiki Bucket)]
+
+    subgraph backend ["FastAPI Backend Server (ADK App)"]
+        Server --> Orch["Orchestrator (ADK Workflow)"]
+
+        Orch -->|Ingest| Extractor["Extractor Node/Tool"]
+        Extractor --> Synth["Synthesizer Agent"]
+        Synth --> Rev["Reviewer Agent"]
+        Rev --> Lib["Librarian Agent"]
+
+        Orch -->|Query| Res["Wiki Researcher Agent"]
+        Res --> run_critic{"Critic Node (Verification Loop)"}
+        run_critic -->|Revise| Res
+        run_critic -->|Approved| END([Done])
+
+        Orch -->|Schema| SchemaMgr["Schema Manager Agent"]
+
+        Orch -->|Lint| Linter["Linter Node"]
+        Linter --> Rev
     end
 
-    Ext -->|Extract| ExtTools[Extractor Tools]
-    Synth -->|Read/Write Pages| GCS[(GCS Wiki Bucket)]
-    Rev -->|Factual Audit| GCS
-    Lib -->|Maintain Index & Gaps| GCS
-    SchemaMgr -->|Read/Merge Proposals| GCS
-    
-    UI -->|Fetch Graph/Tree| GCS
+    Extractor -->|Upload Raw| GCS
+    Synth -->|Read/Write Pages| GCS
+    Rev -->|Read/Write Contradictions & Audits| GCS
+    Lib -->|Read/Write index.md, log.md & gaps.md| GCS
+    SchemaMgr -->|Read/Write schema.md & schema_proposals.md| GCS
+    Res -->|Read index.md & Pages| GCS
+    Linter -->|Read Pages for audit| GCS
 
     subgraph gcs_bucket ["GCS Bucket Layout"]
         schema[schema.md]
@@ -24,6 +38,7 @@ graph TD
         log[log.md]
         gaps[gaps.md]
         proposals[schema_proposals.md]
+        raw_data[raw_data/]
         hierarchy[Dynamic Hierarchical Folders...]
     end
 

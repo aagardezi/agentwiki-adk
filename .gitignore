@@ -201,3 +201,31 @@ tools/a2a-inspector/
 deployment_metadata.json
 wikibackup/
 
+# Project-specific ignored files
+jackdata/
+wiki_app/
+**/.adk/
+
+# Non-backend files
+blogpost.html
+blogpost.md
+*.png
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pkcs12
+
+# Terraform variable files (may contain secrets)
+*.tfvars
+*.tfvars.json
+
+# Google Cloud Service Account / credentials keys
+*credentials*.json
+*key*.json
+
+# Ruff cache
+.ruff_cache/
+
+

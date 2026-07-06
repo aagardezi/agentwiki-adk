@@ -10,10 +10,20 @@ export async function GET() {
     const [files] = await bucket.getFiles();
     
     const fileList = files
-      .filter(file => file.name.endsWith('.md'))
-      .filter(file => file.name !== 'schema.md'); // Skip schema
+      .filter(file => {
+        if (file.name.startsWith('raw_data/')) {
+          return true;
+        }
+        return file.name.endsWith('.md') && file.name !== 'schema.md';
+      });
 
     const filesWithTags = await Promise.all(fileList.map(async (file) => {
+        if (file.name.startsWith('raw_data/')) {
+            return {
+                name: file.name,
+                tags: []
+            };
+        }
         try {
             const [contentBuffer] = await file.download();
             const content = contentBuffer.toString('utf-8');

@@ -4,7 +4,7 @@ This document defines the structure, conventions, and workflows for the LLM Wiki
 
 ## Directory Structure
 
-The wiki is stored in the GCS bucket `your-wiki-bucket-name`. The structure is **dynamic and multi-layered**. The agent should organize files into logical directories and subdirectories based on domain and topic.
+The wiki is stored in the GCS bucket `knowldge-graph-jack-sg`. The structure is **dynamic and multi-layered**. The agent should organize files into logical directories and subdirectories based on domain and topic.
 
 Special files at the root:
 - `index.md`: Content-oriented catalog of all pages.
@@ -13,20 +13,28 @@ Special files at the root:
 - `gaps.md`: Auto-maintained list of stub pages (knowledge gaps detected during ingest).
 - `schema_proposals.md`: Proposals for schema evolution filed by the Librarian Agent.
 - `sources/`: Directory for summaries of raw sources (keep flat).
+- `raw_data/`: Directory storing unmodified raw source files in GCS (the immutable ground truth).
 
 Example of a logical hierarchy (the agent is encouraged to create new branches as needed):
-- `compliance/`
-  - `regulators/` (e.g., `fca.md`, `pra.md`)
-  - `frameworks/` (e.g., `smcr.md`, `mifid-iii.md`)
-  - `concepts/` (e.g., `compliance.md`, `kyc.md`)
-- `technology/`
-  - `ai/`
-    - `platforms/` (e.g., `vertex-ai.md`)
-    - `models/` (e.g., `gemini.md`)
-  - `defi/` (e.g., `de-fi.md`)
-- `agents/`
-  - `frameworks/` (e.g., `google-adk-framework.md`)
-  - `implementations/` (e.g., `global-kyc-compliance-agent.md`)
+- `regulations/`
+  - `uk_crr/` (UK Capital Requirements Regulation articles and rules)
+  - `supervisory_statements/` (PRA Supervisory Statements like SS10/13, SS3/24, etc.)
+  - `policy_statements/` (PRA Policy Statements like PS14/26)
+- `capital_and_liquidity/`
+  - `own_funds/` (Common Equity Tier 1, Additional Tier 1, Tier 2 capital)
+  - `capital_buffers/` (Capital conservation buffer, countercyclical buffer, G-SII/O-SII buffers)
+  - `leverage_ratio/` (UK leverage ratio framework)
+  - `liquidity_and_nsfr/` (Liquidity coverage ratio (LCR), Net stable funding ratio (NSFR))
+- `risk_measurement/`
+  - `credit_risk/` (Standardised approach, IRB approach, definition of default)
+  - `counterparty_credit_risk/` (CCR, exposure methods)
+  - `market_risk/` (Standardised approach, internal model approach)
+  - `operational_risk/` (Operational risk capital requirements)
+  - `securitisation/` (Securitisation framework, significant risk transfer)
+  - `credit_valuation_adjustment/` (CVA risk)
+- `reporting_and_disclosure/`
+  - `corep/` (Common Reporting templates and instructions)
+- `glossary/` (Definitions and key terms from UKCRR and PRA Handbook)
 
 
 
@@ -104,20 +112,23 @@ Every knowledge page MUST include a `confidence` score (0.0–1.0) reflecting th
 ### Ingest
 
 When a new source is provided:
-1. Read the source content.
-2. Create a summary page in `sources/`.
-3. Identify relevant entities, concepts, technologies, protocols, and organizations. Be thorough in extracting new terms.
-4. Update existing pages or create new ones in a logically determined hierarchical directory.
-   - Concrete agent implementations MUST go into `agents/implementations/`.
-   - Agent frameworks MUST go into `agents/frameworks/`.
-   - New technologies, protocols (like MCP), and platforms MUST go into appropriate subdirectories under `technology/` (e.g., `technology/protocols/`, `technology/platforms/`).
+1. Upload the unmodified original file to GCS under `raw_data/`.
+2. Extract the source content from the file/url.
+3. Create a summary page in `sources/`. In this summary page, link to the raw data file using the relative format: `[Original File](../raw_data/<filename>)`.
+4. Identify relevant entities, concepts, technologies, protocols, and organizations. Be thorough in extracting new terms.
+5. Update existing pages or create new ones in a logically determined hierarchical directory.
+   - Regulations (articles, rules, supervisory/policy statements) MUST go under `regulations/`.
+   - Structural capital, buffers, and leverage framework details MUST go under `capital_and_liquidity/`.
+   - Domain-specific risk details (credit risk, market risk, counterparty credit risk, operational risk, CVA, etc.) MUST go under `risk_measurement/`.
+   - Common reporting (COREP) and templates MUST go under `reporting_and_disclosure/`.
+   - General definitions and terms MUST go under `glossary/`.
    - You are encouraged to create new subdirectories or even top-level domains if the topic warrants it.
 
 
-5. **Identify Relationships**: Actively look for specific relationships between the new/updated pages and existing pages. Add them to the `relationships` frontmatter.
-6. **Add Tags**: Assign relevant tags to the page in the frontmatter to facilitate discovery and filtering.
-7. Update `index.md` with links to new/updated pages.
-8. Append an entry to `log.md`.
+6. **Identify Relationships**: Actively look for specific relationships between the new/updated pages and existing pages. Add them to the `relationships` frontmatter.
+7. **Add Tags**: Assign relevant tags to the page in the frontmatter to facilitate discovery and filtering.
+8. Update `index.md` with links to new/updated pages.
+9. Append an entry to `log.md`.
 
 
 

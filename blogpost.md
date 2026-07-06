@@ -30,35 +30,50 @@ The system is built using the **Google Agent Development Kit (ADK)** and leverag
 
 Rather than a single monolithic agent attempting to execute all steps sequentially, the system leverages a **hierarchical multi-agent orchestration topology** built using the Google Agent Development Kit (ADK). A central, highly structured orchestrator delegates specialized operational tasks to autonomous sub-agents:
 
-- **Orchestrator Agent** ([agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agent.py)): Coordinates incoming queries, triggers pipeline ingest cycles, delegates specialized subtasks, and compiles final reports.
-- **Extractor Agent** ([extractor_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/extractor_agent.py)): Dedicated solely to source document retrieval, safely extracting un-truncated text content from PDFs, text files, and web URLs.
-- **Synthesizer Agent** ([synthesizer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/synthesizer_agent.py)): The composition engine that ingests source text, extracts structural entities and tags, and generates or modifies dynamic markdown files in GCS with typed relationships.
-- **Reviewer Agent** ([reviewer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/reviewer_agent.py)): The quality auditor. It parses newly written files to check for schema compliance, cross-checks claims against the whole wiki for contradictions, and creates stubs for knowledge gaps.
-- **Librarian Agent** ([librarian_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/librarian_agent.py)): The bookkeeper. It updates the navigational index `index.md`, records chronological changes in `log.md`, and notes unresolved stubs in `gaps.md`.
-- **Schema Manager Agent** ([schema_manager_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/schema_manager_agent.py)): **Conditional Execution**. This administrative agent runs only when pending directory schema revisions are logged in `schema_proposals.md`. It presents the suggested extensions and interactively updates the global `schema.md` file.
+- **Orchestrator Agent** ([agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agent.py)): The root agent that coordinates sub-agents, manages workflow nodes, and implements the dynamic response verification loop.
+- **Wiki Researcher Agent** ([wiki_researcher_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/wiki_researcher_agent.py)): A specialized agent that executes the retrieval and Q&A pipeline, navigating pages, logs, and raw data to synthesize answers.
+- **Critic Agent** ([critic_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/critic_agent.py)): An verification agent that evaluates draft answers against wiki facts and raw documents to output `APPROVED` or `REVISE` with feedback.
+- **Synthesizer Agent** ([synthesizer_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/synthesizer_agent.py)): The composition engine that ingests source text and generates or modifies markdown files in GCS with typed relationships.
+- **Reviewer Agent** ([reviewer_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/reviewer_agent.py)): The quality auditor. It checks schema compliance, cross-checks claims for contradictions, and flags contested content.
+- **Librarian Agent** ([librarian_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/librarian_agent.py)): Maintains catalog files (`index.md`, `log.md`, `gaps.md`) and tracks stub references.
+- **Schema Manager Agent** ([schema_manager_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/schema_manager_agent.py)): Evolves conventions in `schema.md` interactively based on proposed extensions.
 
 ### Multi-Agent Topology
 
 ```mermaid
 graph TD
-    User([User]) -->|1. Ingest / Query Request| Orch[Orchestrator Agent]
-    User -->|Browse & Audit| UI[Wiki Web UI]
+    User([User]) -->|Browse & Audit| UI["Wiki Web UI"]
+    User -->|Ingest / Query / Lint / Schema Request| Server["FastAPI Backend Server"]
 
-    subgraph multi_agent ["Hierarchical Multi-Agent System"]
-        Orch -->|2. Extract Source| Ext[Extractor Agent]
-        Orch -->|3. Write Content| Synth[Synthesizer Agent]
-        Orch -->|4. Verify Factual Integrity| Rev[Reviewer Agent]
-        Orch -->|5. Re-Index & Log| Lib[Librarian Agent]
-        Orch -->|6. Manage Schema Proposals| SchemaMgr[Schema Manager Agent]
+    UI -->|REST API Requests| Server
+    Server -->|Read Wiki Content| GCS[(GCS Wiki Bucket)]
+
+    subgraph backend ["FastAPI Backend Server (ADK App)"]
+        Server --> Orch["Orchestrator (ADK Workflow)"]
+
+        Orch -->|Ingest| Extractor["Extractor Node/Tool"]
+        Extractor --> Synth["Synthesizer Agent"]
+        Synth --> Rev["Reviewer Agent"]
+        Rev --> Lib["Librarian Agent"]
+
+        Orch -->|Query| Res["Wiki Researcher Agent"]
+        Res --> run_critic{"Critic Node (Verification Loop)"}
+        run_critic -->|Revise| Res
+        run_critic -->|Approved| END([Done])
+
+        Orch -->|Schema| SchemaMgr["Schema Manager Agent"]
+
+        Orch -->|Lint| Linter["Linter Node"]
+        Linter --> Rev
     end
 
-    Ext -->|Extract| ExtTools[Extractor Tools]
-    Synth -->|Read/Write Pages| GCS[(GCS Wiki Bucket)]
-    Rev -->|Factual Audit| GCS
-    Lib -->|Maintain Index & Gaps| GCS
-    SchemaMgr -->|Read/Merge Proposals| GCS
-    
-    UI -->|Fetch Graph/Tree| GCS
+    Extractor -->|Upload Raw| GCS
+    Synth -->|Read/Write Pages| GCS
+    Rev -->|Read/Write Contradictions & Audits| GCS
+    Lib -->|Read/Write index.md, log.md & gaps.md| GCS
+    SchemaMgr -->|Read/Write schema.md & schema_proposals.md| GCS
+    Res -->|Read index.md & Pages| GCS
+    Linter -->|Read Pages for audit| GCS
 
     subgraph gcs_bucket ["GCS Bucket Layout"]
         schema[schema.md]
@@ -83,14 +98,15 @@ sequenceDiagram
     autonumber
     actor User
     participant Orchestrator as Orchestrator Agent
-    participant Extractor as Extractor Agent
+    participant Extractor as Extractor Node / Tool
     participant Synthesizer as Synthesizer Agent
     participant Reviewer as Reviewer Agent
     participant Librarian as Librarian Agent
     participant GCS as GCS Storage Bucket
 
     User->>Orchestrator: Ingest Request (Source URL/File)
-    Orchestrator->>Extractor: Extract content
+    Orchestrator->>Extractor: Extract content & upload
+    Extractor->>GCS: Upload original file to raw_data/
     Extractor->>Orchestrator: Extracted source text
     Orchestrator->>Synthesizer: Write wiki pages
     Synthesizer->>GCS: Read existing pages & write updates
@@ -140,16 +156,30 @@ sequenceDiagram
     autonumber
     actor User
     participant Orchestrator as Orchestrator Agent
+    participant Researcher as Wiki Researcher Agent
+    participant Critic as Critic Agent
     participant GCS as GCS Storage Bucket
 
     User->>Orchestrator: Q&A/Summary Request (e.g., "Summarize frameworks for IAP")
-    Orchestrator->>GCS: read_wiki_file("index.md")
-    GCS-->>Orchestrator: Index structure and page references
-    Note over Orchestrator: Find highly grounded pages matching<br/>the query via tags and paths
-    Orchestrator->>GCS: read_wiki_file("technology/iap.md")
-    GCS-->>Orchestrator: Target page text & metadata
-    Note over Orchestrator: Synthesize citation-backed response<br/>directly from verified data
-    Orchestrator-->>User: Fully grounded answer with citations
+    Orchestrator->>Researcher: Delegate query to researcher
+    loop Verification & Critic Loop (Capped at 2 revisions)
+        Researcher->>GCS: read_wiki_file("index.md") & "log.md"
+        GCS-->>Researcher: Index structure & chronological log
+        Note over Researcher: Navigate & read wiki pages,<br/>source summaries, & raw files
+        Researcher->>GCS: read_wiki_file("raw_data/original_file.pdf")
+        GCS-->>Researcher: Original GCS raw document
+        Note over Researcher: Generate draft response
+        Researcher-->>Orchestrator: Draft response
+        Orchestrator->>Critic: Run critic review
+        Critic->>GCS: Verify claims & citations
+        Critic-->>Orchestrator: STATUS (APPROVED or REVISE)
+        alt APPROVED
+            Note over Orchestrator: Finalize approved response
+        else REVISE (Increment Loop Count)
+            Note over Orchestrator: Append draft and critic's feedback<br/>to session history (await asyncio.sleep)
+        end
+    end
+    Orchestrator-->>User: Final response rendered as markdown chat bubble (message_as_output)
 ```
 
 
@@ -213,14 +243,26 @@ The Active Knowledge Agent Wiki pattern flips this model by having the agent act
 
 This multi-agent implementation introduces several cutting-edge features that elevate it far beyond a simple file-writer:
 
-### 🛡️ 1. Double-Verifier Claim Pipeline
+### 🛠️ 1. Dynamic Local Skills System
+To support fast expanding instruction bases, markdown files in the `skills/` directory are alphabetically merged at startup by `skills_loader.py` and prepended to both the Researcher and Critic agents.
+
+### 🔄 2. Response Verification and Critic Loop
+Incoming queries are thoroughly audited by the Critic Agent. Revisions are fed back to the Researcher, capped at 2 iterations to avoid infinite loops, and scheduled cooperatively via `await asyncio.sleep(0)` to preserve session history databases.
+
+### 📝 3. Professional Report Writing Skill
+Strict formatting guidelines require output to be styled as detailed professional reports with Executive Summary, Detailed Findings, Analysis, and Sources/Grounding Citations pointing to the original GCS raw files.
+
+### 🎨 4. Final Chat Formatting & Rendering
+Final responses are emitted using `node_info=NodeInfo(message_as_output=True)` to render as standard clean markdown chat bubbles instead of raw console code blocks.
+
+### 🛡️ 5. Double-Verifier Claim Pipeline
 When new content is ingested, the **Synthesizer Agent** writes updates with a calculated confidence score. However, before these changes are committed, the independent **Reviewer Agent** acts as a strict auditor. It cross-checks every claim against the entire existing wiki. If it detects a logical or factual mismatch, it does not crash; instead, it flags the file as `contested: true` and alerts the user, providing a highly resilient system that handles contradictory data gracefully.
 
 ### 🧬 2. Decentralized Schema Evolution
 Rather than being bound to a static directory structure, this wiki evolves organically. When the Librarian Agent identifies new concepts, it proposes new structural pathways in `schema_proposals.md`. The administrative **Schema Manager Agent** executes **conditionally**—spinning up only when proposals are pending—to allow users to review, select, and automatically merge new directories into the global `schema.md` conventions.
 
 ### 🩺 3. Real-Time Quantitative Health Auditing
-The system features an automated health checking utility ([health.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/tools/health.py)) that scans the repository to calculate an overall **Health Score (0.0 to 1.0)**. This weighted scoring function balances:
+The system features an automated health checking utility ([health.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/tools/health.py)) that scans the repository to calculate an overall **Health Score (0.0 to 1.0)**. This weighted scoring function balances:
 *   **40% Volume of completed pages** vs. empty placeholder stubs.
 *   **40% Average confidence scores** of claims.
 *   **20% Ratio of contested conflicts** in the wiki.
