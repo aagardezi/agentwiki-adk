@@ -10,13 +10,30 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from app.agent import root_agent
-from app.app_utils.skills_loader import load_skills
 
 
 def test_load_skills():
-    skills_text = load_skills()
-    assert "Wiki Graph Traversal" in skills_text
-    assert "Response Verification and Critique Rules" in skills_text
+    from app.agents.critic_agent import critic_agent
+    from app.agents.wiki_researcher_agent import wiki_researcher_agent
+
+    try:
+        from google.adk.tools import SkillToolset
+    except ImportError:
+        from google.adk.tools.skill_toolset import SkillToolset
+
+    researcher_skill_toolsets = [
+        t for t in wiki_researcher_agent.tools if isinstance(t, SkillToolset)
+    ]
+    critic_skill_toolsets = [
+        t for t in critic_agent.tools if isinstance(t, SkillToolset)
+    ]
+
+    assert len(researcher_skill_toolsets) == 1
+    assert len(critic_skill_toolsets) == 1
+
+    skills_names = [s.name for s in researcher_skill_toolsets[0].skills]
+    assert "wiki-traversal" in skills_names
+    assert "report-writing" in skills_names
 
 
 @pytest.mark.asyncio

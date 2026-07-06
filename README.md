@@ -231,10 +231,10 @@ The Active Knowledge Agent Wiki architecture shines in complex, long-form knowle
 ## Key Advanced Features
 
 ### 🛠️ 1. Dynamic Local Skills System
-To keep the agents highly expandable, the system implements a dynamic skills loading system:
-- **`skills/` Directory**: A folder at the root of the project containing raw markdown instructions (e.g., [skills.md](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/skills/skills.md), [critic_rules.md](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/skills/critic_rules.md), [report_writing.md](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/skills/report_writing.md)).
-- **Dynamic Merging**: A loader utility ([skills_loader.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/app_utils/skills_loader.py)) dynamically scans, alphabetically sorts, and merges all markdown files under `skills/` into a single instruction set.
-- **Unified Rules**: These instructions are dynamically injected into both the **Wiki Researcher Agent** and **Critic Agent** prompts at startup, ensuring formatting and validation expectations are perfectly aligned.
+To keep the agents highly expandable and prevent token context bloat, the system uses the [adk-progressive-skills](https://pypi.org/project/adk-progressive-skills/) library for progressive skill discovery:
+- **`.agents/skills/` Directory**: Local workspace directory containing custom ADK skills, each in its own sub-folder containing a `SKILL.md` (e.g., [wiki-traversal](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/.agents/skills/wiki-traversal/SKILL.md), [critic-evaluation](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/.agents/skills/critic-evaluation/SKILL.md), [report-writing](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/.agents/skills/report-writing/SKILL.md)).
+- **Progressive Discovery**: Skills are scanned across four precedence paths (lowest to highest: global jetski, global user config, home directory, and local workspace `.agents/skills`).
+- **Dynamic Toolset Injection**: The library patches the ADK `Agent` constructor to automatically instantiate and mount a `SkillToolset` containing all discovered skills as tools, ensuring agents only retrieve skill contexts dynamically as needed during workflow execution.
 
 ### 🔄 2. Response Verification and Critic Loop
 To ensure answers are mathematically and factually precise, all queries run through a verification loop:
@@ -245,7 +245,7 @@ To ensure answers are mathematically and factually precise, all queries run thro
 - **Cooperative Multitasking History**: The loop uses `await asyncio.sleep(0)` during revision to yield execution, ensuring the user revised draft is successfully saved to the persistent session database history.
 
 ### 📝 3. Professional Report Writing Skill
-Formatting rules are governance-defined under [skills/report_writing.md](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/skills/report_writing.md):
+Formatting rules are governance-defined under [report-writing/SKILL.md](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/.agents/skills/report-writing/SKILL.md):
 - **Structure**: Every answer must be structured with an **Executive Summary**, **Detailed Findings**, **Analysis & Context**, and a dedicated **Sources and Grounding Citations** section.
 - **Grounding Citation Authority**: Citations must map Wiki Pages and Source Summaries directly to the original raw files stored under `raw_data/` in GCS (the ultimate grounding authority).
 
@@ -257,12 +257,18 @@ Formatting rules are governance-defined under [skills/report_writing.md](file://
 
 ```
 agentwiki-adk/
+├── .agents/                 # Local dynamic skill sheets folder (progressive discovery)
+│   └── skills/
+│       ├── wiki-traversal/
+│       │   └── SKILL.md     # Wiki navigation and raw GCS citation rules
+│       ├── critic-evaluation/
+│       │   └── SKILL.md     # Response validation criteria and feedback rules
+│       └── report-writing/
+│           └── SKILL.md     # Professional report template and grounding rules
 ├── app/
 │   ├── __init__.py
 │   ├── agent.py             # Defines the ADK Orchestrator Agent and workflow
 │   ├── agent_runtime_app.py # Entry point for Agent Runtime
-│   ├── app_utils/
-│   │   └── skills_loader.py # dynamic skills loading utility
 │   ├── agents/              # Specialized sub-agents
 │   │   ├── __init__.py
 │   │   ├── wiki_researcher_agent.py # Retrieval and Q&A researcher agent
@@ -276,10 +282,6 @@ agentwiki-adk/
 │       ├── gcs_io.py        # Tools for reading/writing to GCS
 │       ├── extractor.py     # Tools for content extraction
 │       └── health.py        # Quantitative wiki health calculation tool
-├── skills/                  # Local dynamic skill sheets folder
-│   ├── skills.md            # Wiki navigation and raw GCS citation rules
-│   ├── critic_rules.md      # Response validation criteria and feedback rules
-│   └── report_writing.md    # Professional report template and grounding rules
 ├── frontend/                # Next.js Web UI
 │   ├── app/                 # App router pages and API routes
 │   ├── components/          # React components (Graph, Sidebar, etc.)

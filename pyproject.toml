@@ -16,6 +16,7 @@ dependencies = [
     "google-cloud-storage>=2.14.0",
     "keyring",
     "keyrings-google-artifactregistry-auth",
+    "adk-progressive-skills>=0.1.0",
 ]
 requires-python = ">=3.11,<3.14"
 
@@ -40,6 +41,10 @@ lint = [
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
 
 [tool.ruff.lint]
 select = [

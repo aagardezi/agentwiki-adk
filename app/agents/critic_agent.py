@@ -1,7 +1,7 @@
 # Copyright 2026 Google LLC
+import adk_progressive_skills  # noqa: F401
 from google.adk.agents import Agent
 
-from app.app_utils.skills_loader import load_skills
 from app.config import make_model
 from app.tools.gcs_io import list_wiki_files, read_wiki_file
 
@@ -9,7 +9,7 @@ critic_agent = Agent(
     name="critic_agent",
     model=make_model(),
     description="Dedicated critic agent that evaluates draft responses against grounding facts and citations to output APPROVED or REVISE.",
-    instruction=f"""You are the Critic Agent. Your purpose is to evaluate a draft response against retrieved wiki files and facts, check for accuracy, clarity, and correct citations, and determine whether it should be approved or revised.
+    instruction="""You are the Critic Agent. Your purpose is to evaluate a draft response against retrieved wiki files and facts, check for accuracy, clarity, and correct citations, and determine whether it should be approved or revised.
 
 You will be given:
 1. The original user query.
@@ -29,9 +29,6 @@ You MUST end your evaluation with exactly one of the following output formats:
 - If revision is needed:
   STATUS: REVISE
   Feedback: <Provide clear, constructive, and actionable feedback detailing what needs to be added, corrected, or verified.>
-
-Additional dynamic system instructions and guidelines:
-{load_skills()}
 """,
     tools=[read_wiki_file, list_wiki_files],
 )

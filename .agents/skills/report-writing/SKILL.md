@@ -1,3 +1,8 @@
+---
+name: report-writing
+description: Format answers as professional reports with an Executive Summary, Detailed Findings, Analysis & Context, and structured Sources and Grounding Citations.
+---
+
 # Professional Report Writing and Grounding Citation Guidelines
 
 You must format all query answers as a highly professional, detailed, and structured report.
