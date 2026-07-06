@@ -207,8 +207,6 @@ wiki_app/
 **/.adk/
 
 # Non-backend files
-frontend/
-diagrams/
 blogpost.html
 blogpost.md
 *.png
