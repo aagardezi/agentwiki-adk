@@ -14,6 +14,9 @@ graph TD
         Rev --> Lib["Librarian Agent"]
 
         Orch -->|Query| Res["Wiki Researcher Agent"]
+        Res --> run_critic{"Critic Node (Verification Loop)"}
+        run_critic -->|Revise| Res
+        run_critic -->|Approved| END([Done])
 
         Orch -->|Schema| SchemaMgr["Schema Manager Agent"]
 
