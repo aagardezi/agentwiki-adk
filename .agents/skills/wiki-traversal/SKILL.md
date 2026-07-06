@@ -1,3 +1,8 @@
+---
+name: wiki-traversal
+description: Traverse the GCS Wiki bucket, read logs/index/pages chronologically, trace source summaries, and locate raw source documents under raw_data/ to synthesize accurate factual claims.
+---
+
 # Wiki Graph Traversal and GCS Raw File Citation Guidelines
 
 To answer queries, you must systematically traverse the wiki structure and locate grounding facts in the original source documents.

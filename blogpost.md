@@ -244,7 +244,7 @@ The Active Knowledge Agent Wiki pattern flips this model by having the agent act
 This multi-agent implementation introduces several cutting-edge features that elevate it far beyond a simple file-writer:
 
 ### 🛠️ 1. Dynamic Local Skills System
-To support fast expanding instruction bases, markdown files in the `skills/` directory are alphabetically merged at startup by `skills_loader.py` and prepended to both the Researcher and Critic agents.
+To keep the agents highly expandable and prevent token context bloat, the system uses the [adk-progressive-skills](https://pypi.org/project/adk-progressive-skills/) library for progressive skill discovery. Custom ADK skills are placed in separate folders under `.agents/skills/` (containing a `SKILL.md` each) and are dynamically matched and mounted as tools on agent initialization.
 
 ### 🔄 2. Response Verification and Critic Loop
 Incoming queries are thoroughly audited by the Critic Agent. Revisions are fed back to the Researcher, capped at 2 iterations to avoid infinite loops, and scheduled cooperatively via `await asyncio.sleep(0)` to preserve session history databases.

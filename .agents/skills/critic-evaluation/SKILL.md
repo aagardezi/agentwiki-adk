@@ -1,3 +1,8 @@
+---
+name: critic-evaluation
+description: Audit draft responses, cross-check claims against sources, verify formatting, check grounding, and output APPROVED or REVISE status with constructive feedback.
+---
+
 # Response Verification and Critique Rules
 
 You must evaluate draft responses against ground-truth files and facts to ensure strict quality and correctness.

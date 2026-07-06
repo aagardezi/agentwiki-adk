@@ -1,6 +1,6 @@
+import adk_progressive_skills  # noqa: F401
 from google.adk.agents import Agent
 
-from app.app_utils.skills_loader import load_skills
 from app.config import WIKI_BUCKET_NAME, make_model
 from app.tools.gcs_io import list_wiki_files, read_wiki_file
 
@@ -36,9 +36,6 @@ Follow this step-by-step query and research workflow:
    - Write a detailed, structured markdown response answering the user query.
    - You MUST explicitly cite and list all wiki pages, source summaries, and original raw GCS files (e.g., `raw_data/filename`) you used to construct your answer.
    - If the context doesn't contain the answer, clearly state what information is missing.
-
-Additional dynamic system instructions and guidelines:
-{load_skills()}
 """,
     tools=[read_wiki_file, list_wiki_files],
 )
