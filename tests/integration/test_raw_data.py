@@ -215,7 +215,7 @@ def test_raw_data_inline_ingestion_and_query() -> None:
 
         print("=== QUERY ANSWER ===")
         print(answer)
-        assert unique_token in answer, (
+        assert unique_token in answer.replace("\\", ""), (
             f"Agent did not retrieve inline raw file content. Answer: {answer}"
         )
     finally:

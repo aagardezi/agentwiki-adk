@@ -34,12 +34,13 @@ The system consists of five main layers:
 
 The system is powered by a **hierarchical multi-agent orchestration system** built on top of the Google Agent Development Kit (ADK). Rather than a single agent attempting to execute all reasoning, verification, and compilation steps sequentially, tasks are delegated to specialized, autonomous sub-agents collaborating through a central orchestrator.
 
-- **Orchestrator Agent** ([agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agent.py)): The root agent that receives input, initializes the workflow pipeline, coordinates sub-agent tasks, and returns progress reports to the user.
-- **Wiki Researcher Agent** ([wiki_researcher_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/wiki_researcher_agent.py)): An agent that executes the retrieval/Q&A pipeline, analyzing the central index to locate relevant paths, reading wiki pages, source summaries, and raw files under `raw_data/` to answer queries.
-- **Synthesizer Agent** ([synthesizer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/synthesizer_agent.py)): The core processor that digests extracted source text, identifies concepts, creates/modifies dynamic markdown files in GCS, and defines explicitly typed frontmatter relationships.
-- **Reviewer Agent** ([reviewer_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/reviewer_agent.py)): An independent auditor that scans modified knowledge pages, ensures strict schema compliance, cross-checks claims for contradictions, and flags pages as `contested` if conflicts are found.
-- **Librarian Agent** ([librarian_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/librarian_agent.py)): A bookkeeping agent responsible for maintaining catalog files, compiling `index.md`, recording chronological actions in `log.md`, and tracking stub references in `gaps.md`.
-- **Schema Manager Agent** ([schema_manager_agent.py](file:///Users/sgardezi/work/projects/agentwiki-adk/app/agents/schema_manager_agent.py)): An administrative agent that checks for pending directory conventions in `schema_proposals.md` and interactively processes them, merging approved definitions into the live `schema.md` governance file.
+- **Orchestrator Agent** ([agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agent.py)): The root agent that receives input, coordinates sub-agents, and implements the dynamic response verification loop.
+- **Wiki Researcher Agent** ([wiki_researcher_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/wiki_researcher_agent.py)): A specialized agent that executes the wiki graph retrieval, following links and source summaries to retrieve and synthesize raw data under `raw_data/`.
+- **Critic Agent** ([critic_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/critic_agent.py)): A verification agent that evaluates draft answers against wiki facts and original raw documents to output `APPROVED` or `REVISE` with feedback.
+- **Synthesizer Agent** ([synthesizer_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/synthesizer_agent.py)): Processes raw text, creates/modifies markdown wiki pages, and defines frontmatter relationships.
+- **Reviewer Agent** ([reviewer_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/reviewer_agent.py)): Audits changes for schema compliance and factual contradictions.
+- **Librarian Agent** ([librarian_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/librarian_agent.py)): Re-indexes wiki content, logs historical actions (`log.md`), and tracks stub gaps (`gaps.md`).
+- **Schema Manager Agent** ([schema_manager_agent.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/agents/schema_manager_agent.py)): Evolves conventions in `schema.md` interactively based on directory proposals.
 
 ### Multi-Agent Topology
 
@@ -60,6 +61,9 @@ graph TD
         Rev --> Lib["Librarian Agent"]
 
         Orch -->|Query| Res["Wiki Researcher Agent"]
+        Res --> run_critic{"Critic Node (Verification Loop)"}
+        run_critic -->|Revise| Res
+        run_critic -->|Approved| END([Done])
 
         Orch -->|Schema| SchemaMgr["Schema Manager Agent"]
 
@@ -162,20 +166,24 @@ sequenceDiagram
 
     User->>Orchestrator: Q&A/Summary Request (e.g., "Summarize frameworks for IAP")
     Orchestrator->>Researcher: Delegate query to researcher
-    Researcher->>GCS: read_wiki_file("index.md") & "log.md"
-    GCS-->>Researcher: Index structure & chronological log
-    Note over Researcher: Identify relevant page paths<br/>based on index & log
-    Researcher->>GCS: read_wiki_file("technology/iap.md")
-    GCS-->>Researcher: Target page text & metadata
-    Note over Researcher: Identify referenced source summaries
-    Researcher->>GCS: read_wiki_file("sources/src_iap.md")
-    GCS-->>Researcher: Source summary content with raw link
-    Note over Researcher: Locate and retrieve original raw file
-    Researcher->>GCS: read_wiki_file("raw_data/iap_doc.pdf")
-    GCS-->>Researcher: Original raw file contents
-    Note over Researcher: Synthesize citation-backed response<br/>directly from verified data
-    Researcher-->>Orchestrator: Grounded response
-    Orchestrator-->>User: Fully grounded answer with citations
+    loop Verification & Critic Loop (Capped at 2 revisions)
+        Researcher->>GCS: read_wiki_file("index.md") & "log.md"
+        GCS-->>Researcher: Index structure & chronological log
+        Note over Researcher: Navigate & read wiki pages,<br/>source summaries, & raw files
+        Researcher->>GCS: read_wiki_file("raw_data/original_file.pdf")
+        GCS-->>Researcher: Original GCS raw document
+        Note over Researcher: Generate draft response
+        Researcher-->>Orchestrator: Draft response
+        Orchestrator->>Critic: Run critic review
+        Critic->>GCS: Verify claims & citations
+        Critic-->>Orchestrator: STATUS (APPROVED or REVISE)
+        alt APPROVED
+            Note over Orchestrator: Finalize approved response
+        else REVISE (Increment Loop Count)
+            Note over Orchestrator: Append draft and critic's feedback<br/>to session history (await asyncio.sleep)
+        end
+    end
+    Orchestrator-->>User: Final response rendered as markdown chat bubble (message_as_output)
 ```
 
 
@@ -217,6 +225,34 @@ The Active Knowledge Agent Wiki architecture shines in complex, long-form knowle
 
 ---
 
+
+---
+
+## Key Advanced Features
+
+### 🛠️ 1. Dynamic Local Skills System
+To keep the agents highly expandable, the system implements a dynamic skills loading system:
+- **`skills/` Directory**: A folder at the root of the project containing raw markdown instructions (e.g., [skills.md](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/skills/skills.md), [critic_rules.md](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/skills/critic_rules.md), [report_writing.md](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/skills/report_writing.md)).
+- **Dynamic Merging**: A loader utility ([skills_loader.py](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/app/app_utils/skills_loader.py)) dynamically scans, alphabetically sorts, and merges all markdown files under `skills/` into a single instruction set.
+- **Unified Rules**: These instructions are dynamically injected into both the **Wiki Researcher Agent** and **Critic Agent** prompts at startup, ensuring formatting and validation expectations are perfectly aligned.
+
+### 🔄 2. Response Verification and Critic Loop
+To ensure answers are mathematically and factually precise, all queries run through a verification loop:
+- **Draft Generation**: The researcher agent generates a draft response citing its findings.
+- **Factual Validation**: The Critic Agent evaluates the draft response against index, pages, and raw files. It checks grounding (no hallucinations), citation formatting, and completeness.
+- **Actionable Feedback**: If validation fails, the Critic outputs `STATUS: REVISE` with feedback. The orchestrator feeds the previous draft and feedback back to the researcher for correction.
+- **Iteration Capping**: To prevent infinite loops or excessive API usage, validation loops are capped at a maximum of **2 iterations**. On the 3rd iteration, the draft is auto-approved and delivered with a notice.
+- **Cooperative Multitasking History**: The loop uses `await asyncio.sleep(0)` during revision to yield execution, ensuring the user revised draft is successfully saved to the persistent session database history.
+
+### 📝 3. Professional Report Writing Skill
+Formatting rules are governance-defined under [skills/report_writing.md](file:///usr/local/google/home/sgardezi/work/project/agentwiki-adk/skills/report_writing.md):
+- **Structure**: Every answer must be structured with an **Executive Summary**, **Detailed Findings**, **Analysis & Context**, and a dedicated **Sources and Grounding Citations** section.
+- **Grounding Citation Authority**: Citations must map Wiki Pages and Source Summaries directly to the original raw files stored under `raw_data/` in GCS (the ultimate grounding authority).
+
+### 🎨 4. Final Chat Formatting & Rendering
+- To prevent the UI from displaying raw, unformatted markdown text boxes at the end of the query path, the `run_critic` node emits the final approved response as a standard model `content` message with `node_info=NodeInfo(message_as_output=True)`.
+- This informs the ADK engine that the message content is the final output of the node, rendering it as a standard, beautifully formatted chat bubble.
+
 ## Project Structure
 
 ```
@@ -225,9 +261,12 @@ agentwiki-adk/
 │   ├── __init__.py
 │   ├── agent.py             # Defines the ADK Orchestrator Agent and workflow
 │   ├── agent_runtime_app.py # Entry point for Agent Runtime
+│   ├── app_utils/
+│   │   └── skills_loader.py # dynamic skills loading utility
 │   ├── agents/              # Specialized sub-agents
 │   │   ├── __init__.py
 │   │   ├── wiki_researcher_agent.py # Retrieval and Q&A researcher agent
+│   │   ├── critic_agent.py    # Grounding & citation validation agent
 │   │   ├── synthesizer_agent.py # Wiki composition & GCS editing agent
 │   │   ├── reviewer_agent.py  # Schema & contradiction auditing agent
 │   │   ├── librarian_agent.py # Bookkeeping, indexing, & gaps logging agent
@@ -237,6 +276,10 @@ agentwiki-adk/
 │       ├── gcs_io.py        # Tools for reading/writing to GCS
 │       ├── extractor.py     # Tools for content extraction
 │       └── health.py        # Quantitative wiki health calculation tool
+├── skills/                  # Local dynamic skill sheets folder
+│   ├── skills.md            # Wiki navigation and raw GCS citation rules
+│   ├── critic_rules.md      # Response validation criteria and feedback rules
+│   └── report_writing.md    # Professional report template and grounding rules
 ├── frontend/                # Next.js Web UI
 │   ├── app/                 # App router pages and API routes
 │   ├── components/          # React components (Graph, Sidebar, etc.)
